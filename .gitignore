@@ -9,7 +9,6 @@ build/
 
 # Virtual environment
 venv/
-env/
 .env
 
 # Jupyter
@@ -20,9 +19,7 @@ env/
 .AppleDouble
 .LSOverride
 
-# Model weights (large binary files — push separately if needed)
-results/ddpg_model_N32_K2/
-results/ddpg_model_N32_K4/
+# (model weights are tracked — see results/ddpg_model_*/)
 
 # IDE
 .idea/
