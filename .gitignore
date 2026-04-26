@@ -1,0 +1,30 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.egg-info/
+.eggs/
+dist/
+build/
+
+# Virtual environment
+venv/
+env/
+.env
+
+# Jupyter
+.ipynb_checkpoints/
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Model weights (large binary files — push separately if needed)
+results/ddpg_model_N32_K2/
+results/ddpg_model_N32_K4/
+
+# IDE
+.idea/
+.vscode/
+*.swp
