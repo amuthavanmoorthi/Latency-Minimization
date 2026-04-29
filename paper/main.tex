@@ -51,55 +51,36 @@ supported in part by the Ministry of Science and Technology, Taiwan.}}
 
 % ══════════════════════════════════════════════════════════════════════════════
 \begin{abstract}
-Ultra-reliable low-latency communication (URLLC) envisioned for the
-sixth generation (6G) of wireless networks demands end-to-end (E2E)
-delays below $5\,\mathrm{ms}$ at a reliability no worse than
-$1\!-\!10^{-5}$. Active simultaneously transmitting and reflecting
-reconfigurable intelligent surfaces (STAR-RIS), when paired with a
-multi-antenna base station (BS) and mobile edge computing (MEC), offer
-a uniquely powerful lever to meet this target: they jointly compensate
-the multiplicative path loss of cascaded reflection, serve both
-half-spaces concurrently, and relax the device computation bottleneck.
-Yet the associated joint optimization of transmit beamforming, active
-reflection/transmission coefficients, transmit power and task
-offloading is non-convex, intertwined with a finite-blocklength (FBL)
-rate expression, and---crucially---extremely sensitive to channel
-estimation errors. A few degrees of per-element phase error, amplified
-coherently across all $N$ surface elements, are sufficient to wipe out
-the entire array gain and push the worst-case E2E latency above the
-URLLC deadline.
-
-In this paper, we propose a \emph{digital twin-assisted behavioral
-cloning} (DT-BC) framework that tames this joint problem without
-incurring the well-known convergence pathologies of model-free deep
-reinforcement learning (DRL). A high-fidelity digital twin emulates
-Rician multipath BS--RIS and RIS--user channels, maximum-ratio
-transmission (MRT) across $M$ BS antennas, energy-conserving T/R
-STAR-RIS coefficients, parallel partial MEC offloading, and minimum
-mean-square-error (MMSE) imperfect CSI. Using this twin we derive a
-closed-form per-zone sum-channel oracle policy and distill it into a
-residual multilayer perceptron (MLP) through supervised learning on
-$10^{5}$ (noisy-observation, oracle-action) pairs. The trained policy
-becomes an \emph{implicit denoiser} that inherits the analytical
-structure yet remains robust where the formula itself breaks down.
-
-Extensive simulations demonstrate that DT-BC attains a mean E2E latency
-of $\approx\!1.76\,\mathrm{ms}$ with $100\%$ URLLC satisfaction at the
-default operating point. Under CSI error standard deviation
-$\sigma_{e}\!=\!0.15$ the proposed policy preserves $\approx\!1.84\,\mathrm{ms}$
-latency, whereas the closed-form optimum applied to noisy estimates
-degrades by $13.7\!\times$ to $25.2\,\mathrm{ms}$---a degradation
-regime that makes the formula unusable in realistic deployments.
-Although a full DDPG baseline eventually reaches $1.73\,\text{ms}$, it
-requires $22\!\times$ more training time ($84.7\,\text{min}$ vs
-$3.8\,\text{min}$) and incurs $4{,}000$ URLLC-violating exploration
-steps, making it unsafe for live deployment. The scheme scales
-gracefully with the number of BS antennas
-($M\!\in\!\{1,\!\ldots,\!16\}$), RIS elements
-($N\!\in\!\{8,\!\ldots,\!128\}$), and users in both zones
-($K\!\in\!\{2,\!\ldots,\!8\}$), and consistently outperforms
-fixed-phase, random-phase, and random-action baselines by up to two
-orders of magnitude in mean latency.
+Active simultaneously transmitting and reflecting reconfigurable
+intelligent surfaces (STAR-RIS), integrated with per-element
+amplifiers, offer a promising means of delivering concurrent
+beamforming gains to both the transmission and reflection half-spaces
+in Internet-of-Things (IoT) networks, thereby supporting the 5~ms
+latency and $10^{-5}$ packet-error requirements of ultra-reliable
+low-latency communication (URLLC). Despite this potential, the joint
+optimisation of transmit beamforming, active STAR-RIS phase
+coefficients, transmit power, and mobile edge computing (MEC)
+offloading under finite-blocklength (FBL) channel coding is
+non-convex and acutely sensitive to channel estimation error:
+per-element phase misalignments, coherently accumulated over all $N$
+surface elements, can nullify the array gain and violate the latency
+constraint entirely. To address this, we develop a digital
+twin (DT)-assisted behavioural cloning (BC) framework in which a
+high-fidelity DT maintains dual-view channel access---true channel
+realisations drive a closed-form per-zone sum-channel oracle, while
+noisy minimum mean-square-error (MMSE) channel estimates serve as
+policy observations. Training a residual multilayer perceptron (MLP)
+to map the imperfect estimates to expert actions endows the policy
+with an implicit channel-denoising capability that the oracle itself
+cannot achieve when CSI is imperfect. Simulation results demonstrate
+that the proposed DT-BC policy attains a mean end-to-end (E2E)
+latency of 1.76~ms with 100\% URLLC satisfaction at the nominal
+operating point, and sustains 1.84~ms at CSI error standard deviation
+$\sigma_e\!=\!0.15$---a regime where the closed-form analytical
+policy degrades by $13.7\times$ to 25.2~ms. The DT-BC training
+pipeline completes in 3.8~min, a $22\times$ reduction over deep
+deterministic policy gradient (DDPG), with zero on-line
+URLLC-violating exploration steps.
 \end{abstract}
 
 \begin{IEEEkeywords}
@@ -113,53 +94,226 @@ multi-antenna beamforming, supervised imitation learning, 6G.
 \section{Introduction}
 \label{sec:intro}
 
-\IEEEPARstart{T}{he} sixth-generation (6G) wireless roadmap places
-ultra-reliable low-latency communication (URLLC) at the heart of a
-growing class of mission-critical services---factory automation,
-remote surgery, autonomous driving, digital-twinned industrial
-control---which require end-to-end (E2E) latencies below $5\,\text{ms}$
-and residual packet-error probabilities below $10^{-5}$
-\cite{durisi2016toward,popovski2018slicing,she2021tutorial}. Such
-figures cannot be derived from Shannon's capacity formula, because
-URLLC payloads are short and the information-theoretic cost of finite
-blocklengths becomes dominant. The finite-blocklength (FBL) analysis
-of Polyanskiy \emph{et al.}~\cite{polyanskiy2010channel} has therefore
-become the \emph{lingua franca} of URLLC system design: the achievable
-rate is a non-convex function of the instantaneous signal-to-noise
-ratio (SNR), the blocklength $n_b$, and the target error probability
-$\varepsilon$, with a $\Qfunc^{-1}(\varepsilon)$ penalty term that
-makes the rate extraordinarily sensitive to channel-gain variations.
-For URLLC reliability targets of $\varepsilon\!\approx\!10^{-5}$, this
-penalty exceeds $3$ standard deviations of the channel-dispersion
-term, so any system deployed for URLLC must deliver not only a high
-average SNR but a high SNR whose fluctuations are tightly controlled.
+\IEEEPARstart{E}{nsuring} reliable connectivity for
+Internet-of-Things (IoT) devices is vital for time-critical
+communication, where the integration of mobile edge computing (MEC)
+serves to reduce overall network latency \cite{mao2017survey}. This
+emergent technology empowers industrial IoT applications that require
+ultra-reliable and low-latency communications (URLLC), paving the way
+for mission-critical services such as factory automation, remote
+surgery, and autonomous vehicles \cite{durisi2016toward,she2021tutorial}.
+Unlike conventional broadband services, URLLC payloads are transmitted
+in short packets, and the finite-blocklength (FBL) analysis of
+Polyanskiy \emph{et al.}~\cite{polyanskiy2010channel} establishes that
+the achievable rate incurs a non-negligible dispersion penalty
+proportional to $\mathcal{Q}^{-1}(\varepsilon)/\sqrt{n_b}$, where
+$n_b$ is the blocklength and $\varepsilon$ is the target error
+probability. Sustaining URLLC therefore demands a consistently high
+and stable instantaneous SNR throughout every transmission interval,
+not merely a high average alone.
 
-In parallel, mobile edge computing (MEC) \cite{mao2017survey} migrates
-computation-heavy tasks from energy-constrained Internet-of-Things
-(IoT) devices to nearby edge servers, relaxing the on-device latency
-budget but introducing a new coupling between the physical- and
-application-layer decisions. For a fixed task, the proportion that can
-be economically offloaded depends on the wireless rate, which depends
-on the SNR, which depends on beamforming, which depends on accurate
-channel state information (CSI)---a cascade of dependencies that is
-usually decoupled for analytical tractability but whose joint
-optimization is where most of the unrealised URLLC gain resides.
+Digital twin (DT) technology has emerged as a powerful paradigm to
+address these requirements by providing a high-fidelity virtual
+replica of the physical network that enables safe, data-efficient
+policy training entirely offline \cite{paul2024active}. DTs empower
+industrial IoT applications through real-time monitoring, analysis,
+and optimisation without disrupting live operations, thereby ensuring
+continuous and dependable network management. In the context of IoT
+networks where seamless reliability is crucial, the incorporation of
+DT with URLLC and MEC streamlines the optimisation of resource
+allocation to satisfy stringent latency and reliability requirements,
+whilst eliminating the exploratory safety violations inherent to
+on-line learning approaches.
 
-Reconfigurable intelligent surfaces (RIS) have emerged as a
-cost-efficient means of engineering the propagation environment in
-favor of the physical-layer objectives
-\cite{basar2019wireless,direnzo2020smart,wu2019irs,wu2021tutorial,pan2021reconfigurable}.
-A RIS is a planar array of $N$ passive or active sub-wavelength
-scatterers, each of which imposes a controllable phase (and, for the
-active variant, amplitude) rotation on the incident wave. The
-coherent recombination of these $N$ scaled copies at the receiver
-produces an $\mathcal{O}(N^2)$ passive beamforming gain that, in
-principle, can compensate arbitrary pathloss deficits provided the
-phases can be set to within a few degrees of their optimal values.
-Reflective-only RIS variants
-\cite{wu2019irs,wu2021tutorial,pan2021reconfigurable,huang2020reconfigurable}
-cover only one half-space; their simultaneously-transmitting-and-%
-reflecting (STAR-RIS) generalisation
+The use of reconfigurable intelligent surfaces (RIS) to engineer the
+wireless propagation environment has attracted considerable research
+interest as a cost-effective means of delivering the stable, high-SNR
+links demanded by URLLC
+\cite{basar2019wireless,wu2021tutorial,pan2021reconfigurable}. Passive
+RIS relies exclusively on phase-shift control to manipulate signal
+reflection; however, active RIS introduces individual power amplifiers
+within each element, enabling active signal amplification that
+overcomes the severe double-cascaded path loss of BS--RIS--user links
+at millimetre-wave frequencies
+\cite{long2021active,zhang2023activevspassive}. Recognising that
+spatial confinement can impose substantial limitations on RIS
+versatility, there has been increasing interest in simultaneously
+transmitting and reflecting RIS (STAR-RIS) \cite{liu2021star,mu2022star},
+which achieves comprehensive 360\textdegree{} coverage of the entire
+surrounding space. Active STAR-RIS, in particular, introduces a new
+degree of freedom in manipulating signal propagation, enabling
+amplified beams to be delivered simultaneously to IoT devices on both
+sides of the surface.
+
+The synergy between active STAR-RIS, DT-based offline training, and
+MEC offloading is paving the way for communication advancements that
+offer reliable and low-latency service in mission-critical IoT
+deployments. However, harnessing this synergy requires the joint
+optimisation of multi-antenna transmit beamforming, active STAR-RIS
+phase coefficients, transmit power, and per-user MEC offloading
+ratios---a high-dimensional non-convex problem further complicated by
+the FBL rate expression and the acute sensitivity of the coherent
+array gain to CSI estimation errors. MMSE estimation leaves a residual
+phase deviation per RIS element that accumulates coherently across all
+$N$ elements, such that even modest estimation noise can collapse the
+total array gain and drive the E2E latency above the URLLC deadline.
+Existing frameworks have not jointly addressed multi-antenna active
+STAR-RIS, FBL-accurate rate modelling, parallel MEC offloading, and
+imperfect CSI with a learning-based policy that is simultaneously
+URLLC-safe and CSI-robust, motivating the present work.
+
+\subsection{Related Works}
+\label{sec:related}
+
+Earlier research on URLLC resource allocation predominantly
+concentrated on communication aspects whilst neglecting computation
+considerations \cite{durisi2016toward,popovski2018slicing}. With the
+increasing demand for IoT devices to perform computation-intensive
+tasks within strict time constraints, MEC has emerged as a compelling
+solution to facilitate efficient task processing in URLLC systems
+\cite{mao2017survey}. At the same time, DT technology provides
+practical features that enable organisations to meet the stringent
+requirements of high reliability and low latency, ensuring continuous
+and dependable operation; the incorporation of DT with URLLC in IoT
+networks has been shown to streamline resource allocation optimisation
+to satisfy URLLC requirements \cite{paul2024active}. The interplay
+between pilot overhead and FBL payload rate in massive-MIMO URLLC was
+analysed in \cite{ren2020joint}, where it was shown that CSI errors
+couple multiplicatively with the short-packet rate penalty, motivating
+joint design of channel estimation and data transmission. Model-free
+deep reinforcement learning (DRL) approaches have been applied to RIS
+resource allocation \cite{huang2020reconfigurable,lillicrap2016continuous};
+however, their convergence degrades severely in high-dimensional
+continuous action spaces, and the on-line exploratory steps they
+generate produce URLLC-deadline violations that are impermissible in
+live IoT deployments \cite{zappone2019model}.
+
+In the domain of RIS-assisted IoT networks, a growing body of
+research has demonstrated the effectiveness of intelligent surfaces
+in enhancing coverage and SNR
+\cite{wu2019irs,wu2021tutorial,direnzo2020smart,basar2019wireless}.
+Prior works have predominantly centred on RIS variants that function
+as either reflective or transmissive surfaces
+\cite{wu2019irs,pan2021reconfigurable}, requiring served devices to be
+positioned on the same side as the RIS and resulting in half-space
+coverage. STAR-RIS \cite{liu2021star,xu2021star,mu2022star} resolves
+this limitation by partitioning the incident energy between a reflected
+beam (R-zone) and a transmitted beam (T-zone). The comparative study
+in \cite{zhang2023activevspassive} and the analysis in
+\cite{zhi2022activeris} demonstrate that active RIS outperforms its
+passive counterpart in the high-pathloss and low-pilot-SNR regimes
+that characterise millimetre-wave URLLC deployments. The most closely
+related contribution is \cite{paul2024active}, which proposes an
+active STAR-RIS URLLC framework for digitally-twinned IoT networks
+with FBL rate modelling and partial MEC offloading; however, that
+work assumes a single-antenna BS and perfect CSI, and employs a
+fractional-programming optimiser that degrades under realistic channel
+estimation noise. Table~\ref{tab:relwork} offers a comprehensive
+investigation of the existing works and highlights the contributions
+of the proposed framework.
+
+\begin{table*}[t]
+\centering
+\caption{A comparative overview of the proposed work and the state
+of the art.}
+\label{tab:relwork}
+\small
+\begin{tabular}{lcccccccc}
+\toprule
+\textbf{Reference} & \textbf{RIS type} & \textbf{Multi-ant.} &
+\textbf{MEC} & \textbf{URLLC (FBL)} & \textbf{Algorithm} &
+\textbf{DT} & \textbf{Imperfect CSI} & \textbf{Metric} \\
+\midrule
+Wu \& Zhang \cite{wu2019irs}
+  & Passive    & \checkmark &            &            & AO    &            &            & Sum-rate max.      \\
+Mu \emph{et al.} \cite{mu2022star}
+  & STAR       & \checkmark &            &            & AO    &            &            & Sum-rate max.      \\
+Long \emph{et al.} \cite{long2021active}
+  & Active     & \checkmark &            &            & AO    &            &            & Sum-rate max.      \\
+Zhang \emph{et al.} \cite{zhang2023activevspassive}
+  & Active     & \checkmark &            &            & AO    &            & \checkmark & Rate max.          \\
+Ren \emph{et al.} \cite{ren2020joint}
+  & ---        & \checkmark &            & \checkmark & AO    &            & \checkmark & Latency min.       \\
+Huang \emph{et al.} \cite{huang2020reconfigurable}
+  & Passive    & \checkmark &            &            & DRL   &            &            & Sum-rate max.      \\
+Paul \emph{et al.} \cite{paul2024active}
+  & Act.\ STAR &            & \checkmark & \checkmark & AO    & \checkmark &            & E2E latency min.   \\
+\textbf{This work}
+  & \textbf{Act.\ STAR} & \textbf{\checkmark} & \textbf{\checkmark}
+  & \textbf{\checkmark} & \textbf{DT-BC} & \textbf{\checkmark}
+  & \textbf{\checkmark} & \textbf{E2E latency min.} \\
+\bottomrule
+\end{tabular}
+\end{table*}
+
+\subsection{Motivations and Contributions of the Work}
+\label{sec:contributions}
+
+The motivation behind this research is multi-faceted. Firstly, the
+limited spatial coverage of conventional reflective-only RIS
+constrains the deployment flexibility of IoT systems, necessitating
+the capability of active STAR-RIS to simultaneously serve devices on
+both sides of a surface \cite{liu2021star,mu2022star}. Secondly, a
+critical need exists to advance beyond the perfect-CSI assumption:
+MMSE estimation errors accumulate coherently across all $N$ surface
+elements and can collapse the array gain entirely, rendering the
+closed-form analytical solution unusable at realistic noise levels---a
+degradation regime not addressed by any existing active STAR-RIS URLLC
+framework. Thirdly, the high-dimensional joint action space of active
+STAR-RIS systems makes model-free DRL impractical due to slow
+convergence and on-line URLLC violations \cite{zappone2019model}. Our
+study stands at the intersection of these three challenges, leveraging
+the dual-view property of the digital twin to endow a behavioural
+cloning (BC) policy with implicit channel-denoising capabilities that
+neither the closed-form oracle nor conventional DRL can provide. The
+contributions of this paper are summarised as follows.
+\begin{itemize}
+\item Unlike prior works that assume a single-antenna BS or perfect
+CSI \cite{paul2024active,ren2020joint}, we formulate the joint
+optimisation of multi-antenna transmit beamforming, active STAR-RIS
+phase coefficients, transmit power, and per-user MEC offloading ratios
+under FBL channel coding and imperfect MMSE CSI, with independent
+phase vectors for the transmission and reflection zones. A closed-form
+per-zone sum-channel oracle is derived to achieve an $MN^2$-fold SNR
+gain, together with an analytical optimal offload ratio that equalises
+device and edge computation times, providing exact supervision targets
+for the behavioural cloning step.
+
+\item We propose a digital twin-assisted behavioural cloning (DT-BC)
+framework in which the digital twin maintains dual-view channel
+access---true channel realisations supervise the oracle whilst noisy
+MMSE estimates form the policy observation---and trains a residual
+multilayer perceptron (MLP) entirely offline via supervised imitation.
+This deliberate information asymmetry endows the trained policy with
+an implicit channel-denoising capability, verified through a
+systematic CSI-error sweep across $\sigma_e \in [0,\,0.30]$.
+
+\item Simulation results confirm that the proposed DT-BC policy
+achieves a mean E2E latency of 1.76~ms with 100\% URLLC satisfaction
+at the nominal operating point, and sustains 1.84~ms at CSI error
+standard deviation $\sigma_e\!=\!0.15$---where the closed-form
+analytical policy degrades by $13.7\times$ to 25.2~ms. The training
+pipeline completes in 3.8~min, a $22\times$ reduction over DDPG,
+with zero on-line URLLC-violating exploration steps.
+\end{itemize}
+
+The remainder of this paper is organised as follows.
+Section~\ref{sec:sysmodel} presents the system model including the
+optimization problem formulation. Section~\ref{sec:method} develops
+the proposed DT-BC solution, comprising the closed-form oracle,
+policy architecture, training procedure, and complexity analysis.
+Section~\ref{sec:results} reports simulation results and
+Section~\ref{sec:conclusion} concludes the paper.
+Appendices~\ref{app:proof}--\ref{app:bc} provide supporting
+derivations.
+
+\textit{Notations:} Scalars, vectors, and matrices are denoted by
+$a$, $\mathbf{a}$, and $\mathbf{A}$, respectively. $(\cdot)^H$
+denotes the Hermitian transpose, $\angle(\cdot)$ the complex argument,
+and $[\cdot]^+\!\triangleq\!\max(0,\cdot)$. $\mathcal{Q}(\cdot)$
+denotes the complementary Gaussian CDF and
+$\mathcal{CN}(\boldsymbol{\mu},\boldsymbol{\Sigma})$ a circularly
+symmetric complex Gaussian distribution.
 \cite{liu2021star,xu2021star,mu2022star} overcomes this limitation by
 partitioning the incident energy between a reflected beam (R-zone)
 and a transmitted beam (T-zone). The \emph{active} flavour of
@@ -186,270 +340,6 @@ computation paths whose slower branch dictates the E2E latency: a
 modest wireless improvement can therefore close the latency gap much
 more aggressively than in non-MEC scenarios.
 
-\subsection{Motivation and Open Problems}
-
-Despite important progress in RIS-assisted URLLC
-\cite{paul2024active,ren2020joint} and in deep reinforcement learning
-(DRL) for RIS resource allocation
-\cite{huang2020reconfigurable,lillicrap2016continuous,zappone2019model},
-several gaps persist and collectively motivate this work:
-\begin{enumerate}
-  \item \emph{Curse of dimensionality.} Joint optimization of $N$
-  element coefficients, $M$ antenna weights, $K$ offloading ratios
-  and the transmit power spans a continuous action space whose
-  dimensionality ($\!\sim\!70$ for $N\!=\!32,M\!=\!4,K\!=\!4$) is
-  prohibitive for model-free DRL, which routinely fails to converge
-  in that regime. Our preliminary experiments with DDPG
-  \cite{lillicrap2016continuous} on the same environment produced
-  either non-learning trajectories or policies trapped at poor local
-  optima, consistent with the fragility reports of
-  \cite{zappone2019model}.
-  \item \emph{Imperfect CSI.} The analytically optimal phase profile
-  aligns per-element arguments to within a few degrees; with
-  realistic MMSE channel-estimation residuals, those few degrees of
-  error are amplified coherently across all $N$ elements, causing
-  catastrophic beamforming loss. Concretely, a Gaussian phase error
-  of standard deviation $\sigma_\phi$ degrades the coherent gain by
-  $|\E[e^{j\Delta\phi}]|^2\!=\!e^{-\sigma_\phi^2}$ on a \emph{per
-  element} basis, so the cumulative N-element gain collapses
-  exponentially in $\sigma_\phi^2$. No existing STAR-RIS URLLC
-  framework explicitly quantifies or combats this effect.
-  \item \emph{Partial offloading non-linearity.} The optimal offload
-  ratio $\rho^\star_k$ is a rational function of the FBL rate, which
-  is itself a non-linear function of the cascaded SNR; treating
-  offloading separately from beamforming, as in most prior art, leads
-  to a demonstrable loss. The coupling is exactly what makes the
-  optimization hard and also exactly what the proposed learner can
-  absorb.
-  \item \emph{Real-deployment safety.} URLLC traffic cannot tolerate
-  the exploratory failures of on-line RL. Any learning procedure must
-  therefore be \emph{off-policy}, \emph{data-efficient}, and
-  \emph{deployable without on-line exploration}. Imitation learning
-  from a high-fidelity digital twin oracle is, to our knowledge, the
-  only paradigm that satisfies all three constraints.
-\end{enumerate}
-
-\subsection{Contributions}
-
-We address the above gaps with five contributions:
-
-\begin{enumerate}
-  \item \textbf{Journal-grade system model.} We formulate a
-  multi-antenna active-STAR-RIS URLLC-MEC system in which $M$ BS
-  antennas perform MRT, a STAR-RIS with $N$ energy-splitting elements
-  steers two \emph{independent} coefficient vectors
-  $(\vect{\theta}_T,\vect{\theta}_R)$ toward $K_T$ transmission-zone
-  and $K_R$ reflection-zone users, Rician multipath with
-  configurable $\kappa$-factor captures the mm-wave line-of-sight,
-  parallel partial offloading couples the wireless rate to the
-  on-device CPU, and MMSE residual errors model imperfect CSI. All
-  hyperparameters are drawn from the 3GPP mm-wave industrial
-  reference scenario.
-
-  \item \textbf{High-fidelity digital twin.} We implement the above
-  model as a Python/Gymnasium environment that exposes two
-  synchronized views of the wireless state: \emph{true} channels
-  (available only to the environment for reward computation and
-  oracle-action generation) and \emph{noisy estimates} (available to
-  the policy). This dual-view digital twin is the pedagogic engine
-  for CSI-robust policy learning, a design pattern that we believe
-  is of independent methodological interest.
-
-  \item \textbf{Closed-form zone-aware oracle.} We prove that the
-  sum-coherent gain in each zone is maximised by the complex-sum
-  phase alignment
-  $\phi_{z,n}^{\star}=\angle(\sum_k h_{\text{RU}_z,k,n})-\angle
-  h_{\text{BR},0,n}$, yielding an $MN^2$-fold SNR gain over random
-  phases, and we couple this with the analytical offload ratio
-  $\rho_k^{\star}=f(\gamma_k)$ that equalises the device and MEC
-  computation times. The closed form is obtained via a tight
-  Cauchy-Schwarz bound and a Rician-steering singular-vector
-  argument.
-
-  \item \textbf{Behavioral-cloning policy with implicit denoising.}
-  We distill $10^{5}$ (noisy-observation, oracle-action) pairs into
-  a 4-layer residual MLP via cosine-annealed supervised learning.
-  Because the observation is computed from the estimate while the
-  target action is computed from the truth, the network is
-  \emph{forced} to solve an implicit Bayes denoising problem that
-  confers robustness at no architectural cost. We provide a
-  qualitative analysis of why this asymmetry is essential and
-  verify it ablatively by training a symmetric variant (truth-to-%
-  truth) whose robustness is empirically inferior.
-
-  \item \textbf{Strict dominance over the analytical solution under
-  imperfect CSI.} Through a controlled $\sigma_e$-sweep we
-  demonstrate that DT-BC maintains $\approx\!1.76\,\text{ms}$ mean latency
-  across the entire noise range $\sigma_e\!\in\![0,\,0.30]$, whereas
-  the closed-form expert applied to the noisy estimate degrades to
-  $25.2\,\text{ms}$ at $\sigma_e\!=\!0.15$---a $13.7\!\times$ gap
-  that establishes the learned policy's value \emph{beyond} mere
-  imitation. To the best of our knowledge, this is the first
-  demonstration in the RIS/URLLC literature that a supervised
-  imitator strictly outperforms its own teacher on the operational
-  metric.
-\end{enumerate}
-
-\subsection{Notation and Organization}
-
-Scalars are denoted by lower-case letters ($a$), vectors by bold
-lower-case ($\vect{a}$), matrices by bold upper-case ($\mat{A}$).
-$\C^{m\times n}$ and $\R^{m\times n}$ denote $m\!\times\!n$ complex
-and real matrices; $\cn(\vect{\mu},\mat{\Sigma})$ is a circularly
-symmetric complex Gaussian with mean $\vect{\mu}$ and covariance
-$\mat{\Sigma}$. $(\cdot)^{\mathsf{H}}$, $(\cdot)^{\mathsf{T}}$ and
-$(\cdot)^{*}$ are Hermitian transpose, transpose and complex
-conjugate; $\|\cdot\|$ denotes the Euclidean norm and
-$\angle(\cdot)$ the complex argument. $\mathrm{diag}(\vect{a})$ is
-the diagonal matrix with diagonal $\vect{a}$; $[\cdot]^{+}$ denotes
-$\max(0,\cdot)$. $\Qfunc(x)$ and $\Qfunc^{-1}(x)$ are the
-complementary Gaussian CDF and its inverse. $\E[\cdot]$ denotes
-expectation.
-
-The remainder of the paper is organised as follows.
-Section~\ref{sec:related} reviews the state of the art and
-summarises, in tabular form, the distinctions between this work and
-prior art. Section~\ref{sec:sysmodel} develops the system model
-including channel, STAR-RIS, SNR, FBL, and parallel-MEC submodels,
-with explicit attention to imperfect CSI.
-Section~\ref{sec:problem} formulates the joint optimisation problem
-and derives the closed-form oracle.
-Section~\ref{sec:method} presents the proposed DT-BC framework with
-its dual-view twin, residual-MLP architecture, training loss and
-Algorithm~\ref{alg:dtbc}. Section~\ref{sec:results} reports a
-comprehensive set of simulation results across eight sweeps---including
-a new Rician $\kappa$-factor sweep that characterises performance from
-pure-Rayleigh to strong-LoS channels---together with a consolidated
-performance table and a training-efficiency comparison. Section~\ref{sec:conclusion}
-concludes. Appendix~\ref{app:proof} proves the central phase
-alignment proposition, Appendix~\ref{app:fbl} derives the FBL
-rate expression used throughout, and Appendix~\ref{app:bc} collects
-a qualitative generalisation-bound argument for the residual-MLP BC
-policy.
-
-% ══════════════════════════════════════════════════════════════════════════════
-\section{Related Work}
-\label{sec:related}
-
-\subsection{Reconfigurable Intelligent Surfaces}
-
-The canonical joint-passive-beamforming problem was first addressed
-in \cite{wu2019irs}; the authors showed that alternating optimisation
-between the BS precoder and the RIS phase shifts converges to a local
-optimum in polynomial time under perfect CSI. The field has since
-evolved into a rich body of design methodology summarised in the
-tutorials \cite{wu2021tutorial,pan2021reconfigurable,basar2019wireless}
-and in the seminal vision paper \cite{direnzo2020smart}, which
-collectively argue that RIS is now a mature candidate enabler for 6G.
-STAR-RIS generalises the reflective surface so as to cover both
-half-spaces through energy-splitting, mode-switching, or
-time-switching protocols \cite{liu2021star,xu2021star,mu2022star};
-the energy-splitting variant studied here is the most flexible of the
-three, since each element independently allocates amplitude between
-the two zones. Active RIS
-\cite{long2021active,zhang2023activevspassive,zhi2022activeris} inserts
-amplifiers at each element, trading amplifier noise for a power gain
-that overcomes the multiplicative path loss of cascaded channels. The
-recent comparative study of \cite{zhang2023activevspassive} concludes
-that active RIS outperforms its passive counterpart in the
-low-pilot-SNR and high-pathloss regimes---precisely the mm-wave
-URLLC operating point we target. Active STAR-RIS therefore inherits
-both advantages: per-zone amplification and double-coverage.
-
-\subsection{URLLC under Finite Blocklength}
-
-The achievable rate under finite blocklength was characterised by
-Polyanskiy \emph{et al.}~\cite{polyanskiy2010channel}; the framework
-has since been adopted as the standard analytical tool for URLLC and
-its system-level implications were surveyed in
-\cite{durisi2016toward}, \cite{popovski2018slicing}, and most
-recently \cite{she2021tutorial}. The FBL rate is a strictly concave
-function of the SNR only in a limited regime; at the large-$\gamma$
-asymptote it reduces to Shannon's expression plus a
-$-\Qfunc^{-1}(\varepsilon)\sqrt{n_b}$ correction that is nevertheless
-large for URLLC reliability targets. Pilot-payload power allocation
-for massive-MIMO URLLC was studied in \cite{ren2020joint}; the
-authors showed that the optimal split gives more energy to pilots
-than standard data-only analysis would suggest, since CSI errors
-couple multiplicatively with the short-packet penalty. An
-active-STAR-RIS URLLC framework with a digital-twin oracle appeared
-in \cite{paul2024active}, on which our model builds directly. That
-work assumes perfect CSI, single-antenna BS, and uses fractional
-programming to optimise the phases; we remove both assumptions and
-replace the convex surrogate with a learned policy that also
-outperforms the analytical solution under noise.
-
-\subsection{Mobile Edge Computing and Partial Offloading}
-
-Parallel local-and-remote execution of a divisible task is reviewed
-in \cite{mao2017survey}; we adopt the canonical model with
-proportional partitioning and maximum-latency aggregation. The
-resulting optimisation is a minimax problem over a scalar ratio per
-user; it admits a closed-form solution (our Proposition~\ref{prop:rho})
-when the wireless rate is treated as a constant, but becomes coupled
-when the rate itself depends on beamforming decisions. This coupling
-is the reason our oracle must compute the offload ratio
-\emph{after} the phase profile has been fixed.
-
-\subsection{Learning-Based Resource Allocation}
-
-Deep deterministic policy gradient (DDPG)
-\cite{lillicrap2016continuous} and its TD3/SAC successors have been
-applied to RIS phase optimization, but their convergence is fragile
-when the action space exceeds a few dozen dimensions, especially with
-non-smooth rewards \cite{zappone2019model}. Behavioral cloning---the
-classical imitation-learning paradigm pioneered by Pomerleau
-\cite{pomerleau1991efficient}---has been revived in the era of deep
-learning and made statistically rigorous by the DAgger reduction
-\cite{ross2011reduction}, which bounds the compound error of the
-imitator in terms of the one-step loss and the recurrence horizon.
-In the \emph{single-step contextual-bandit} reformulation we use
-(each channel realisation is a fresh episode), the DAgger bound
-collapses to the standard supervised-learning excess-risk bound, and
-the main concern becomes the asymmetry between train-time and
-test-time distributions---exactly the problem our dual-view digital
-twin is designed to solve. To the best of our knowledge, our work is
-the first application of pure supervised imitation to
-active-STAR-RIS URLLC, with a demonstrated \emph{strict dominance}
-of the learned policy over its own oracle teacher under imperfect
-CSI.
-
-\subsection{Positioning with Respect to Prior Art}
-
-Table~\ref{tab:relwork} positions the proposed DT-BC framework with
-respect to the most closely related prior work on RIS-assisted
-URLLC. The combination of multi-antenna BS, active STAR-RIS, FBL
-rate, partial MEC, imperfect CSI and learning-based optimisation
-appears for the first time in this paper.
-
-\begin{table*}[t]
-\centering
-\caption{Positioning of the proposed DT-BC framework with respect to
-representative prior works on RIS-assisted URLLC and learning-based
-resource allocation. ``FBL'' denotes finite-blocklength modelling;
-``CSI err.'' denotes explicit treatment of imperfect CSI;
-``Par.\ MEC'' denotes parallel partial offloading.}
-\label{tab:relwork}
-\small
-\begin{tabular}{lcccccccc}
-\toprule
-\textbf{Reference} & \textbf{RIS} & \textbf{STAR} & \textbf{Active} &
-\textbf{Multi-Ant.} & \textbf{FBL} & \textbf{Par.\ MEC} &
-\textbf{CSI err.} & \textbf{Learning} \\
-\midrule
-Wu\,\&\,Zhang \cite{wu2019irs}             & \checkmark &            &            & \checkmark &            &            &            &            \\
-Mu \emph{et al.} \cite{mu2022star}          & \checkmark & \checkmark &            & \checkmark &            &            &            &            \\
-Long \emph{et al.} \cite{long2021active}    & \checkmark &            & \checkmark & \checkmark &            &            &            &            \\
-Zhang \emph{et al.} \cite{zhang2023activevspassive}
-                                            & \checkmark &            & \checkmark & \checkmark &            &            & \checkmark &            \\
-Ren \emph{et al.} \cite{ren2020joint}       &            &            &            & \checkmark & \checkmark &            & \checkmark &            \\
-Paul \emph{et al.} \cite{paul2024active}    & \checkmark & \checkmark & \checkmark &            & \checkmark & \checkmark &            &            \\
-Huang \emph{et al.} \cite{huang2020reconfigurable}
-                                            & \checkmark &            &            & \checkmark &            &            &            & \checkmark \\
-\textbf{This work (DT-BC)}                  & \checkmark & \checkmark & \checkmark & \checkmark & \checkmark & \checkmark & \checkmark & \checkmark \\
-\bottomrule
-\end{tabular}
-\end{table*}
 
 % ══════════════════════════════════════════════════════════════════════════════
 \section{System Model}
@@ -521,14 +411,17 @@ $\beta$ admits the decomposition
 \end{equation}
 where $\vect{h}_{\mathrm{LoS}}$ is a unit-magnitude steering vector
 and $\vect{h}_{\mathrm{NLoS}}\!\sim\!\cn(\vect{0},\mat{I})$. The LoS
-component is determined by the angle of arrival/departure
-$\psi\!\in\![-\pi/2,\pi/2]$ and the half-wavelength ULA response
+component is modelled as a half-wavelength ULA response with a
+uniformly distributed initial phase $\varphi_0\!\sim\!\mathcal{U}[0,2\pi)$
+drawn independently for each coherence block to capture uncertainty
+in the exact angle of arrival across realisations:
 \begin{equation}
   [\vect{h}_{\mathrm{LoS}}]_n=
-     e^{j\pi(n-1)\sin\psi},\quad n=1,\ldots,N_{\mathrm{el}},
+     e^{j(\varphi_0 + n\pi/2)},\quad n=0,\ldots,N_{\mathrm{el}}-1,
   \label{eq:steering}
 \end{equation}
-so that the per-element phase is deterministic once $\psi$ is fixed.
+where the inter-element phase step $\pi/2$ corresponds to a
+half-wavelength spacing at a nominal $30^{\circ}$ departure angle.
 By construction $\E[|h_n|^2]=\beta$ and $\|\vect{h}\|^2 / N_{\mathrm{el}}
 \to \beta$ almost surely as $N_{\mathrm{el}}\!\to\!\infty$; the
 normalisation is dimensionally consistent with the free-space
@@ -613,33 +506,30 @@ the element level.
 
 Let $\vect{h}_{\mathrm{BR},0}\!\triangleq\!\mat{H}_{\mathrm{BR}}[0,:]$
 denote a representative BS-antenna row. For a zone-$z$ user $k$, the
-cascaded scalar effective channel is
+cascaded scalar effective channel including the weak residual direct
+link is
 \begin{equation}
   g_{z,k}=\vect{h}_{\mathrm{RU}_z,k}^{\mathsf{H}}\,
           \mathrm{diag}(\vect{\theta}_z)\,\vect{h}_{\mathrm{BR},0}+
-          h_{\mathrm{BU},k},\;\;z\!\in\!\{T,R\}.
+          h_{\mathrm{BU},k},\;\;z\!\in\!\{T,R\},
   \label{eq:geff}
 \end{equation}
-Because the BS-side channel $\vect{h}_{\mathrm{BR},0}$ is a single
-column of the full MIMO matrix $\mat{H}_{\mathrm{BR}}$, a valid MRT
-beamformer at the BS enjoys the maximum-ratio gain across the $M$
-antennas. Classical MRT theory \cite{lo1999maximum} gives a
-deterministic $M$-fold array gain: the received signal power is
-multiplied by $\|\vect{w}^{\star}\|^2\!=\!M\|\vect{h}_{\mathrm{BR},0}\|^2/M$
-when the precoder is aligned to the per-antenna channels toward the
-RIS, and coherent summation at the RIS yields an effective SISO link
-whose gain is $M|g_{z,k}|^2$ rather than $|g_{z,k}|^2$. Therefore
+where $h_{\mathrm{BU},k}$ is the direct BS--UE channel whose
+contribution is negligible under the deep-blockage path-loss exponent
+$\alpha_{\mathrm{BU}}\!=\!5.0$ but is retained for completeness.
+With MRT at the BS, the precoder is aligned to the BS--RIS cascaded
+channel, delivering a deterministic $M$-fold array gain
+\cite{lo1999maximum}. The received SNR at user $k$ in zone $z$ is
+therefore
 \begin{equation}
   \gamma_{z,k}=\frac{M\,P\,|g_{z,k}|^2}{\sigma^2},
   \label{eq:snr}
 \end{equation}
-where $P$ is the transmit power and $\sigma^2$ is the receiver noise.
-This expression is used directly by both the oracle and the policy
-reward. Note that $M$ enters linearly, whereas $N$ enters through the
-coherent gain term $|g_{z,k}|^2$; under aligned phases the latter
-scales as $N^2$. The joint $MN^2$ scaling is precisely the advantage
-of combining MRT with active STAR-RIS, and it is the headroom that
-the DT-BC policy must learn to exploit while surviving CSI errors.
+where $P$ is the BS transmit power and $\sigma^2$ is the receiver
+noise power. Note that $M$ enters linearly while $N$ enters through
+$|g_{z,k}|^2$; under perfectly aligned phases the RIS contribution
+scales as $N^2$, yielding the $MN^2$ joint gain that is the key
+operating advantage of combining MRT with active STAR-RIS.
 
 \subsection{Finite-Blocklength Achievable Rate}
 \label{sec:fbl}
@@ -709,19 +599,18 @@ task to the wireless link, which is itself bottlenecked by
 $R_{z,k}$; no monotonic choice of $\rho_k$ minimises the max, so
 \eqref{eq:rhostar} emerges as a non-trivial balance point.
 
-% ══════════════════════════════════════════════════════════════════════════════
-\section{Problem Formulation and Closed-Form Oracle}
-\label{sec:problem}
+\subsection{Optimization Problem Formulation}
+\label{sec:opt}
 
-\subsection{Joint Optimization Problem}
-
-Collecting the design variables,
+Collecting the design variables into the tuple
+$(\boldsymbol{\theta}_T, \boldsymbol{\theta}_R, P, \{\rho_k\})$,
+the E2E latency minimisation problem is stated as
 \begin{equation}
 \begin{aligned}
 \mathcal{P}_{0}:\;
-&\underset{\vect{\theta}_T,\vect{\theta}_R,P,\,\{\rho_k\}}{\mathrm{minimize}}
+&\underset{\vect{\theta}_T,\vect{\theta}_R,P,\,\{\rho_k\}}{\mathrm{minimise}}
    &&L_{\max} \\
-&\quad\text{s.t.}
+&\;\text{s.t.}
    &&|a_{T,n}|^2+|a_{R,n}|^2\le A_{\max}^2,\;\forall n,\\
 &&&\phi_{z,n}\in[-\pi,\pi),\;\forall n,\,z,\\
 &&&P_{\min}\le P\le P_{\max},\\
@@ -729,49 +618,18 @@ Collecting the design variables,
 \end{aligned}
 \label{eq:opt}
 \end{equation}
-Problem~$\mathcal{P}_0$ is non-convex on three counts. First, the
-cascaded SNR $\gamma_{z,k}$ is bilinear in $\vect{\theta}_z$ and
-$\vect{h}_{\mathrm{RU}_z,k}$, so the sum $\sum_k |g_{z,k}|^2$ is a
-non-convex quadratic in the complex phasors $e^{j\phi_{z,n}}$ even
-after the amplitude is fixed. Second, the FBL rate \eqref{eq:fbl} is
-a non-convex function of $\gamma$ because of the dispersion-penalty
-term, which introduces a sign change in the second derivative at
-moderate SNR. Third, the $\max(\cdot)$ aggregation in \eqref{eq:latuser}
-and \eqref{eq:lmax} is non-smooth and turns the objective into a
-piecewise structure with $2K+1$ linear pieces. Standard convex
-surrogates (semidefinite relaxation, successive convex approximation,
-block-coordinate descent) can be applied but typically converge to
-local optima that are far from the global coherent-beamforming
-optimum and---as we verify empirically---degrade further under
-imperfect CSI because the surrogate is built from the noisy
-estimate. We therefore abandon attempts at direct convex programming
-and instead construct a \emph{closed-form oracle} valid for the
-single-step contextual-bandit reformulation used in
-Section~\ref{sec:method}.
+Problem~$\mathcal{P}_0$ is non-convex due to the bilinear cascaded
+SNR in the phase variables, the non-convex FBL dispersion penalty in
+$\gamma$, and the non-smooth $\max(\cdot)$ aggregation across users.
+Standard convex surrogates degrade further under imperfect CSI
+because the surrogate is built from the noisy estimate $\hat{\mathbf{h}}$.
+We therefore abandon direct convex programming and address
+$\mathcal{P}_0$ through the closed-form oracle and behavioural
+cloning framework developed in Section~\ref{sec:method}.
 
-\subsection{Lagrangian Structure and Convex Sub-Problems}
-
-A useful intuition is obtained by inspecting the Lagrangian of the
-\emph{per-user} sub-problem for fixed $\vect{\theta}_z$ and $P$.
-Introducing multipliers $\mu_k\ge 0$ for the $\rho_k\!\le\!1$ and
-$\nu_k\!\ge\!0$ for the $\rho_k\!\ge\!0$ constraint, and an
-epigraph variable $t$ for the $\max$ aggregation, the problem
-reduces to
-\begin{align}
-  \min_{t,\rho_k}\;\; &t \nonumber\\
-  \text{s.t.}\;\; &\frac{\rho_k D}{R_{z,k}}+\frac{\rho_k DC_{\mathrm{MEC}}}{f_{\mathrm{MEC}}}\le t,\;
-                   \frac{(1-\rho_k)DC_{\mathrm{loc}}}{f_{\mathrm{dev}}}\le t, \nonumber\\
-                  &\rho_k\in[0,1]. \label{eq:sub-rho}
-\end{align}
-Because both sides of $t$ are linear (hence convex) in $\rho_k$,
-\eqref{eq:sub-rho} is a scalar linear program whose optimum lies at
-the intersection of the two constraints: this is exactly the
-equal-time point that we will derive as the closed-form
-\eqref{eq:rhostar}. The KKT conditions give
-$\mu_k\!=\!\nu_k\!=\!0$ whenever the equal-time point lies in
-$(0,1)$, which is the typical operating regime. The substructure
-is thus convex and the difficulty of $\mathcal{P}_0$ is almost
-entirely in the joint phase alignment across the two zones.
+% ══════════════════════════════════════════════════════════════════════════════
+\section{Proposed Solution}
+\label{sec:method}
 
 \subsection{Per-Zone Sum-Channel Oracle}
 
@@ -861,11 +719,7 @@ final $\tanh(\cdot)$ activation of the policy network, so that the
 output distribution is automatically compatible with the action
 space without explicit projection.
 
-% ══════════════════════════════════════════════════════════════════════════════
-\section{Proposed DT-BC Framework}
-\label{sec:method}
-
-\subsection{Digital Twin with Dual-View Observation}
+\subsection{Digital Twin with Dual-View Architecture}
 
 The digital twin is a Python/Gymnasium environment that executes the
 model of Section~\ref{sec:sysmodel} at native NumPy speed. At every
@@ -907,48 +761,56 @@ correction from $\hat{\vect{h}}$ to $\vect{h}$ implicitly.
 
 \subsection{Residual-MLP Policy Architecture}
 
-Let $\pi_{\vect{w}}:\R^{4N+1}\!\to\![-1,1]^{2N+1+K}$ be a four-layer
-residual MLP of hidden width $H=512$ with LeakyReLU activations and
-a skip connection from the input to the third hidden layer
+The policy $\pi_{\vect{w}}:\R^{4N+1}\!\to\![-1,1]^{2N+1+K}$ is a
+four-layer residual MLP of hidden width $H\!=\!512$ with
+LeakyReLU(0.1) activations. The skip connection at the third layer
+adds the activated input projection to the activated main-stream
+output (post-activation residual):
 \begin{equation}
-  \vect{h}_{3}=\sigma\!\bigl(\mat{W}_{3}\vect{h}_{2}+
-                    \mat{W}_{\mathrm{skip}}\vect{s}\bigr),
+  \vect{h}_{3}=\sigma\!\bigl(\mat{W}_{3}\vect{h}_{2}+\vect{b}_3\bigr)
+              +\sigma\!\bigl(\mat{W}_{\mathrm{skip}}\vect{s}
+                             +\vect{b}_{\mathrm{skip}}\bigr),
   \label{eq:resnet}
 \end{equation}
-followed by a final $\tanh(\cdot)$ output layer. The skip guarantees
-that the network can learn the identity map on the phase hints
-trivially, leaving only the residual---the CSI-denoising correction---%
-for the parameters to absorb. The depth is kept shallow so that the
-forward pass completes in $<\!0.3\,\text{ms}$ on a commodity edge
-CPU, comfortably inside the URLLC budget. Table~\ref{tab:arch}
-summarises the architecture for $N\!=\!32,K\!=\!4$.
+followed by a final $\tanh(\cdot)$ output layer. The post-activation
+skip allows the network to route the raw phase hints directly to
+deeper layers without vanishing-gradient issues, leaving the
+remaining parameters to absorb only the residual CSI-denoising
+correction. Table~\ref{tab:arch} summarises the architecture for
+$N\!=\!32$, $K\!=\!4$.
 
 \begin{table}[t]
 \centering
-\caption{Residual-MLP policy architecture for $N\!=\!32,K\!=\!4$.}
+\caption{Residual-MLP policy architecture ($N\!=\!32$, $K\!=\!4$,
+$H\!=\!512$).}
 \label{tab:arch}
-\begin{tabular}{lcc}
+\begin{tabular}{lrr}
 \toprule
-\textbf{Layer} & \textbf{Shape} & \textbf{Params} \\
+\textbf{Layer} & \textbf{Shape} & \textbf{Parameters} \\
 \midrule
-Input $\vect{s}$             & $129$             & --- \\
-FC$_1$ + LeakyReLU           & $129\to 512$      & $66{,}560$ \\
-FC$_2$ + LeakyReLU           & $512\to 512$      & $262{,}656$ \\
-FC$_3$ + skip + LeakyReLU    & $512+129\to 512$  & $328{,}192$ \\
-FC$_4$ + LeakyReLU           & $512\to 512$      & $262{,}656$ \\
-FC$_{\mathrm{out}}$ + $\tanh$ & $512\to 69$       & $35{,}397$ \\
+Input $\vect{s}$              & $129$           & ---         \\
+FC$_1$ + LeakyReLU            & $129\to512$     & $66{,}560$  \\
+FC$_2$ + LeakyReLU            & $512\to512$     & $262{,}656$ \\
+FC$_3$ + skip + LeakyReLU     & $512\to512$     & $329{,}216$ \\
+FC$_4$ + LeakyReLU            & $512\to512$     & $262{,}656$ \\
+FC$_\mathrm{out}$ + $\tanh$   & $512\to69$      & $35{,}397$  \\
 \midrule
-\textbf{Total}               &                   & $\mathbf{955{,}461}$ \\
+\textbf{Total}                &                 & $\mathbf{956{,}485}$ \\
 \bottomrule
 \end{tabular}
 \end{table}
 
-The parameter count is comparable to small vision networks and
-two orders of magnitude smaller than a typical DRL critic, so the
-memory footprint is well within edge-device constraints.
+The total parameter count of $956{,}485$ is comparable to a small
+vision network and two orders of magnitude smaller than a typical
+DRL critic, placing it comfortably within edge-device memory
+constraints.
 
 \subsection{Training Objective}
 
+Behavioural cloning \cite{pomerleau1991efficient,ross2011reduction}
+trains a policy by minimising the discrepancy between its predictions
+and the actions of an expert demonstrator; in our setting the expert
+is the closed-form oracle \eqref{eq:astar} evaluated on true channels.
 Let $\Loss_{\mathrm{phase}}$ denote the Huber loss on the $2N$ phase
 outputs and $\Loss_{\mathrm{scalar}}$ denote the MSE on the $1+K$
 power/offload outputs. The composite BC loss is
@@ -958,40 +820,23 @@ power/offload outputs. The composite BC loss is
    + \lambda\,\Loss_{\mathrm{scalar}}(\pi_{\vect{w}}(\vect{s}),\vect{a}^{\star}),
   \label{eq:loss}
 \end{equation}
-with $\lambda=1$ balancing the two contributions. The Huber loss
-\cite{huber1964robust,pomerleau1991efficient} is preferred over a
-pure MSE for the phase targets because even the truth-based oracle
-\eqref{eq:phistar} contains hard phase wraps near the $\pm\pi$
-boundary: the $\{\cos,\sin\}$ encoding partially absorbs them but
-the remaining wrap-induced outliers can dominate an L2 loss and
-destabilise training. The MSE part keeps the scalar controls on
-their compact support.
+with $\lambda\!=\!0.1$. The weight $\lambda\!=\!0.1$ reflects the
+fact that the $2N\!=\!64$ phase dimensions already dominate the
+gradient signal; a smaller weight prevents the $1\!+\!K\!=\!5$
+scalar outputs from being overshadowed while still training them
+accurately. The Huber loss \cite{huber1964robust} is preferred over
+MSE for the phase targets because phase-wrap discontinuities near
+the $\pm\pi$ boundary produce large isolated residuals that would
+destabilise an L2 objective. The MSE part keeps the scalar controls
+on their compact support.
 
-We optimise \eqref{eq:loss} with Adam, initial learning rate
-$\eta_0\!=\!10^{-3}$, weight decay $10^{-5}$, cosine annealing to
-$10^{-5}$, and batch size $256$ for $E=20$ epochs over $M_D=10^{5}$
-demonstration samples. Although the theoretical sample complexity of
-BC for a Lipschitz policy class is $\widetilde{\mathcal{O}}(1/n)$
-excess risk \cite{ross2011reduction}, in practice we find that
-$10^{5}$ samples suffices for the loss to plateau (see
-Fig.~\ref{fig:conv}); doubling the dataset gives a sub-1\%
-improvement. A short generalisation-bound argument that rationalises
-this empirical observation is sketched in Appendix~\ref{app:bc}.
-
-\subsection{Data Augmentation and Training Details}
-
-We apply two lightweight data augmentations on-the-fly. First, a
-\emph{random CSI noise} step re-samples $\vect{e}$ according to
-\eqref{eq:csi} on every batch so that the learner encounters a
-multiplicity of noise realisations per underlying channel. Second,
-a \emph{phase-offset augmentation} adds a common random
-$\phi_0\!\sim\!\mathcal{U}[-\pi,\pi)$ to both the observation and
-the oracle-target phases; this enforces the symmetry that the
-coherent-beamforming optimum is only defined up to a global phase.
-Neither augmentation changed the asymptotic loss appreciably, but
-the CSI-noise augmentation gave a measurable robustness improvement
-($\!\approx\!15\%$ lower MSE at $\sigma_e\!=\!0.2$) and is retained
-by default.
+The parameters are optimised with Adam (initial learning rate
+$\eta_0\!=\!10^{-3}$, weight decay $10^{-5}$) with cosine annealing
+to a floor of $\eta_{\min}\!=\!10^{-6}$, batch size $B\!=\!256$,
+over $E\!=\!20$ epochs on $M_D\!=\!10^{5}$ offline samples.
+In practice $10^{5}$ samples is sufficient for the loss to plateau
+(see Fig.~\ref{fig:conv}); a generalisation-bound argument is
+given in Appendix~\ref{app:bc}.
 
 \subsection{Algorithm and Complexity}
 
@@ -1033,7 +878,89 @@ edge CPU---well within the $5\,\text{ms}$ URLLC budget. The training
 itself completes in $\!<\!4\,\text{min}$ on a single consumer-grade
 GPU, making the entire pipeline reproducible on commodity hardware.
 
-\subsection{Discussion: Why BC Beats DDPG Here}
+\subsection{Computational Complexity Analysis}
+\label{sec:complexity}
+
+Table~\ref{tab:complexity} compares the on-line inference complexity
+per decision. DT-BC requires $\mathcal{O}(H^2)$ floating-point
+operations for a single forward pass through the residual MLP, completing
+in $\sim\!0.28\,\text{ms}$ on a commodity edge CPU---well within the
+$5\,\text{ms}$ URLLC budget. The closed-form Analytical~@~Estimate
+baseline is approximately $10\!\times$ cheaper ($\mathcal{O}(MN)$,
+$\sim\!0.02\,\text{ms}$), but as demonstrated in
+Section~\ref{sec:results}, this cost advantage is far outweighed by
+its $13.7\!\times$ latency disadvantage under realistic imperfect CSI.
+Standard DDPG shares the same inference architecture as DT-BC and
+thus has equivalent per-step cost.
+
+\begin{table}[t]
+\centering
+\caption{On-line inference complexity per decision
+         ($N\!=\!32$, $M\!=\!4$, $K\!=\!4$).}
+\label{tab:complexity}
+\begin{tabular}{lcc}
+\toprule
+\textbf{Method}               & \textbf{FLOPs}            & \textbf{Wall-clock} \\
+\midrule
+Analytical @ Estimate         & $\mathcal{O}(MN)$         & $\sim\!0.02\,\text{ms}$ \\
+DT-BC (residual MLP)          & $\mathcal{O}(H^2)$        & $\sim\!0.28\,\text{ms}$ \\
+Standard DDPG (actor only)    & $\mathcal{O}(H^2)$        & $\sim\!0.28\,\text{ms}$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Table~\ref{tab:training} compares the \emph{training} complexity,
+which is often the more practically limiting factor. DT-BC requires
+only $10^5$ offline environment interactions and completes in
+$3.8\,\text{min}$ on a single consumer GPU, a $22\!\times$ speedup
+over DDPG's $84.7\,\text{min}$ for $3\!\times\!10^5$ on-line steps.
+Beyond speed, DDPG's on-line exploration generates
+$>\!4{,}000$ URLLC-deadline-violating transitions that are
+impermissible in safety-critical IoT deployments; DT-BC eliminates
+this risk entirely by training exclusively on the digital twin.
+
+\begin{table*}[t]
+\centering
+\caption{Training efficiency comparison (Apple M-series GPU,
+$N\!=\!32$, $K\!=\!4$, $\sigma_e\!=\!0.10$). ``URLLC-safe''
+indicates zero deadline-violating episodes during training.}
+\label{tab:training}
+\begin{tabular}{lcccccc}
+\toprule
+\textbf{Method} &
+\textbf{Steps} &
+\textbf{Wall-clock} &
+\textbf{Critic?} &
+\textbf{Final $L_{\max}$} &
+\textbf{URLLC-safe?} &
+\textbf{CSI-robust?} \\
+\midrule
+DT-BC (proposed)
+  & $10^5$ (off-line)
+  & $\mathbf{3.8\,\text{min}}$
+  & No
+  & $\mathbf{1.755\,\text{ms}}$
+  & \textbf{Yes} (zero failures)
+  & \textbf{Yes} ($1.837\,\text{ms}$ at $\sigma_e\!=\!0.15$) \\
+DDPG \cite{lillicrap2016continuous}
+  & $3\!\times\!10^5$ (on-line)
+  & $84.7\,\text{min}$
+  & Yes
+  & $1.73\,\text{ms}$
+  & No ($>\!4{,}000$ violations)
+  & Untested \\
+Analytical oracle
+  & 0 (closed-form)
+  & $<\!0.1\,\text{s}$
+  & No
+  & $2.344\,\text{ms}$ ($\sigma_e\!=\!0$)
+  & Yes
+  & No ($25.187\,\text{ms}$ at $\sigma_e\!=\!0.15$) \\
+\bottomrule
+\end{tabular}
+\end{table*}
+
+\subsection{Why DT-BC Outperforms DDPG}
 
 The single-step contextual-bandit reformulation used in
 Algorithm~\ref{alg:dtbc} dispenses with the full Bellman equation:
@@ -1055,25 +982,26 @@ supervised regression and is the reason our training curve
 
 \subsection{Simulation Setup}
 
-Table~\ref{tab:params} lists the parameters used throughout. Every
-data point is averaged over $150$ independent channel realisations
-unless otherwise stated; confidence intervals are narrower than the
-line-widths of our plots and are omitted for clarity. We compare the
-proposed \textbf{DT-BC} against five baselines:
-\begin{itemize}
-  \item \textbf{Oracle Expert (True CSI):} the closed-form
-  \eqref{eq:astar} evaluated on \emph{true} channels (informational
-  upper bound, unachievable in practice).
-  \item \textbf{Analytical @ Estimate:} the same formula evaluated
-  on the noisy $\hat{\vect{h}}$---the natural CSI-agnostic
-  benchmark.
-  \item \textbf{Fixed Phase:} $\phi_{z,n}\!=\!0,P\!=\!P_{\max},\rho_k\!=\!0.5$
-  (naive baseline, phase-agnostic).
-  \item \textbf{Random Phase:} $\phi_{z,n}\!\sim\!\mathcal{U}[-\pi,\pi)$
-  (stress-test baseline, no coherent gain).
-  \item \textbf{Random Action:} all action dimensions
-  $\sim\!\mathcal{U}[-1,1]$ (worst case).
-\end{itemize}
+The proposed DT-BC framework is evaluated through extensive simulations
+under the parameters listed in Table~\ref{tab:params}. Every data
+point is averaged over 150 independent channel realisations unless
+otherwise stated; confidence intervals are narrower than the
+line-widths and are omitted for clarity. The proposed DT-BC policy
+is compared against five benchmark schemes. The \textbf{Oracle Expert}
+evaluates the closed-form oracle \eqref{eq:oracle_action} on the
+\emph{true} channels, representing an informational upper bound that
+is unachievable in practice. The \textbf{Analytical @ Estimate} applies
+the same closed-form formula to the noisy MMSE estimate $\hat{\mathbf{h}}$,
+representing the natural baseline for a practitioner who applies the
+analytical solution without accounting for estimation error. The
+\textbf{Fixed Phase} baseline sets $\phi_{z,n}\!=\!0$,
+$P\!=\!P_{\max}$, and $\rho_k\!=\!0.5$ for all users, representing
+a phase-agnostic configuration. The \textbf{Random Phase} baseline
+draws $\phi_{z,n}\!\sim\!\mathcal{U}[-\pi,\pi)$ independently at each
+step, providing a stress-test with no coherent array gain. Finally,
+the \textbf{Random Action} baseline draws all action dimensions
+uniformly from $[-1,1]$, representing the worst-case unoptimised
+scenario.
 
 \begin{table}[t]
 \centering
@@ -1170,45 +1098,38 @@ $N\!=\!64$.
 
 \subsection{Training Convergence: DT-BC vs.\ DDPG}
 
-Fig.~\ref{fig:conv} directly compares the learning curves of the
-proposed DT-BC and the full DDPG baseline
-\cite{lillicrap2016continuous} on identical hardware (Apple M-series
-MPS GPU). Both methods were run to completion and the results are
-reported honestly.
+Fig.~\ref{fig:conv} compares the learning curves of the proposed
+DT-BC and the full DDPG baseline \cite{lillicrap2016continuous}
+measured on identical hardware. The DT-BC supervised objective
+converges from the very first evaluation at step $5{,}120$, reaching
+a mean episode latency of $1.755\,\text{ms}$ with 100\% URLLC
+satisfaction, and remains flat for all subsequent epochs. Since all
+$10^5$ samples are collected offline from the digital twin oracle,
+no on-line exploration failures occur throughout the entire training
+process, completing in $3.8\,\text{min}$ on a single consumer GPU.
 
-\textbf{DT-BC (blue).} The supervised BC objective converges from the
-\emph{very first evaluation} at step $5{,}120$: the mean episode
-reward reaches $+1.67$ (latency $1.755\,\text{ms}$, URLLC satisfied)
-and remains flat for all subsequent epochs. No exploration failures
-occur because all $10^5$ samples are collected off-line from the
-digital twin oracle. Total wall-clock: $3.8\,\text{min}$ on one
-consumer GPU.
+In contrast, the DDPG agent begins with $4{,}000$ steps of pure
+random exploration (mean latency $12.5\,\text{ms}$) before the
+critic accumulates sufficient transitions to provide useful gradients.
+The mean latency subsequently improves from step $6{,}000$
+($3.5\,\text{ms}$) and stabilises near step $20{,}000$
+($\approx\!2.0\,\text{ms}$). After $3\!\times\!10^5$ steps, the
+DDPG actor achieves $1.73\,\text{ms}$---comparable to DT-BC---but
+at a wall-clock cost of $84.7\,\text{min}$, representing a
+$22\!\times$ training-time penalty. Critically, the $4{,}000$-step
+random-exploration phase generates URLLC deadline violations that
+would be impermissible on live IoT devices.
 
-\textbf{DDPG (red dashed).} The on-policy RL agent begins with
-$4{,}000$ steps of pure random exploration (reward $\approx\!-2.5$,
-latency $12.5\,\text{ms}$) before the critic accumulates enough
-transitions to provide a useful gradient. The reward then rises
-steeply from step $6{,}000$ (latency $3.5\,\text{ms}$) and stabilises
-around step $20{,}000$ (latency $\approx\!2.0\,\text{ms}$). After
-$3\!\times\!10^5$ steps the DDPG actor achieves $1.73\,\text{ms}$---marginally
-better than DT-BC's $1.755\,\text{ms}$---but at a wall-clock cost of
-$84.7\,\text{min}$: a $\mathbf{22\!\times}$ training-time penalty.
-More importantly, the $4{,}000$-step random-exploration phase generates
-URLLC deadline violations on live devices, which is impermissible in
-safety-critical deployments.
-
-Three practical conclusions follow. \textbf{(i)} \emph{Training
-efficiency}: DT-BC finishes in $<\!4\,\text{min}$; DDPG requires
-$84.7\,\text{min}$ to reach comparable performance.
-\textbf{(ii)} \emph{Deployment safety}: DT-BC has zero on-line
-exploration failures; DDPG violates URLLC for $>4{,}000$ steps before
-converging. \textbf{(iii)} \emph{CSI robustness}: DT-BC inherits
-robustness through the dual-view training signal (Section~\ref{sec:method})
-and stays at $1.82$--$1.84\,\text{ms}$ across $\sigma_e\!\in\![0,0.30]$;
-DDPG's robustness under imperfect CSI is untested and would require
-separate re-training for each noise level. Together these three
-advantages---not raw asymptotic latency---constitute the case for
-DT-BC in real deployments.
+The comparison reveals three practical advantages of DT-BC beyond
+asymptotic latency performance. First, training efficiency is
+$22\!\times$ superior ($3.8\,\text{min}$ vs.\ $84.7\,\text{min}$).
+Second, deployment safety is guaranteed since DT-BC generates zero
+on-line URLLC violations throughout training. Third, CSI robustness
+is inherently provided through the dual-view training signal, with
+DT-BC maintaining $1.82$--$1.84\,\text{ms}$ across
+$\sigma_e\!\in\![0,\,0.30]$, whereas DDPG's robustness under
+imperfect CSI is untested and would require separate re-training
+for each noise level.
 
 \begin{figure}[t]
   \centering
@@ -1462,124 +1383,33 @@ enough that the estimation noise dominates the LoS component.
   \label{fig:kappa}
 \end{figure}
 
-\subsection{Complexity Discussion}
-
-Table~\ref{tab:complexity} compares the on-line (inference) complexity
-per decision. DT-BC is roughly $10\!\times$ more expensive than
-the closed-form analytical rule but still $<\!0.3\,\text{ms}$ per
-decision on a commodity edge CPU. Given its $13\!\times$ latency
-advantage under imperfect CSI, this is an extremely favourable
-trade-off. Standard DDPG has the same inference cost as DT-BC (both
-share the same actor architecture) but requires orders of magnitude
-more training compute and, as we document in
-Table~\ref{tab:training}, required $22\!\times$ more training time
-and incurred thousands of URLLC-violating exploration steps.
-
-\begin{table}[t]
-\centering
-\caption{On-line inference complexity per decision
-         ($N\!=\!32$, $M\!=\!4$, $K\!=\!4$).}
-\label{tab:complexity}
-\begin{tabular}{lcc}
-\toprule
-\textbf{Method}               & \textbf{FLOPs}            & \textbf{Wall-clock} \\
-\midrule
-Analytical @ Estimate         & $\mathcal{O}(MN)$         & $\sim\!0.02\,\text{ms}$ \\
-DT-BC (residual MLP)          & $\mathcal{O}(H^2)$        & $\sim\!0.28\,\text{ms}$ \\
-Standard DDPG (critic+actor)  & $\mathcal{O}(H^2)$        & $\sim\!0.30\,\text{ms}$ \\
-\bottomrule
-\end{tabular}
-\end{table}
-
-Table~\ref{tab:training} provides a comprehensive comparison of the
-\emph{training} complexity, which is often more practically limiting
-than the inference cost in real deployments. DT-BC requires only
-$10^5$ environment interactions (all off-line on the digital twin)
-and completes supervised training in under four minutes on a single
-consumer-grade GPU. Standard DDPG requires $3\!\times\!10^5$ on-line
-interactions and $84.7\,\text{min}$ of wall-clock time to reach
-comparable asymptotic latency, a $22\!\times$ training overhead.
-Beyond speed, DDPG's on-line exploration phase generates $>4{,}000$
-URLLC-deadline-violating transitions---steps where a live device would
-have experienced $L_{\max}\!>\!5\,\text{ms}$---which is impermissible
-in safety-critical deployments \cite{zappone2019model}. DT-BC avoids
-this entirely by replacing the online critic with the digital-twin
-oracle policy, whose targets are analytically exact and generated
-entirely off-line.
-
-\begin{table*}[t]
-\centering
-\caption{Training efficiency comparison (measured on Apple M-series MPS GPU,
-$N\!=\!32$, $K\!=\!4$, $\sigma_e\!=\!0.10$). ``URLLC-safe'' indicates
-whether the training phase generates any deadline-violating episodes
-($L_{\max}\!>\!5\,\text{ms}$) that would be unacceptable on live devices.}
-\label{tab:training}
-\begin{tabular}{lcccccc}
-\toprule
-\textbf{Method} &
-\textbf{Steps} &
-\textbf{Wall-clock} &
-\textbf{Critic?} &
-\textbf{Final $L_{\max}$} &
-\textbf{URLLC-safe?} &
-\textbf{CSI-robust?} \\
-\midrule
-DT-BC (proposed)
-  & $10^5$ (off-line)
-  & $\mathbf{3.8\,\text{min}}$
-  & No
-  & $\mathbf{1.755\,\text{ms}}$
-  & \textbf{Yes} (zero failures)
-  & \textbf{Yes} ($1.837\,\text{ms}$ at $\sigma_e\!=\!0.15$) \\
-DDPG \cite{lillicrap2016continuous}
-  & $3\!\times\!10^5$ (on-line)
-  & $84.7\,\text{min}$
-  & Yes
-  & $1.73\,\text{ms}$
-  & No ($>\!4{,}000$ violation steps)
-  & Untested \\
-Analytical oracle
-  & 0 (closed-form)
-  & $<\!0.1\,\text{s}$
-  & No
-  & $2.344\,\text{ms}$ ($\sigma_e\!=\!0$)
-  & Yes
-  & No ($25.187\,\text{ms}$ at $\sigma_e\!=\!0.15$) \\
-\bottomrule
-\end{tabular}
-\end{table*}
-
 \subsection{Summary of Findings}
 
-Across the eight sweeps reported above, four consistent patterns
-emerge:
-\begin{enumerate}
-  \item \textbf{URLLC target met.} DT-BC achieves the $5\,\text{ms}$
-  URLLC target with $100\%$ satisfaction and mean latency
-  $1.755\,\text{ms}$ at the default operating point---a regime that
-  no non-coherent baseline reaches. DDPG eventually matches this
-  ($1.73\,\text{ms}$) but at a $22\!\times$ training-time cost and
-  with $4{,}000$ URLLC-violating exploration steps.
-  \item \textbf{$MN^2$ scaling confirmed.} The coherent-beamforming
-  scaling predicted by Proposition~\ref{prop:opt} is observed
-  empirically in both the $M$-sweep (Fig.~\ref{fig:M}) and the
-  $N$-sweep (Fig.~\ref{fig:N}).
-  \item \textbf{CSI robustness.} The implicit-denoising property of
-  the dual-view digital twin confers a $13.7\!\times$ robustness
-  advantage under realistic CSI errors at $\sigma_e\!=\!0.15$
-  ($25.187\,\text{ms}$ vs.\ $1.837\,\text{ms}$,
-  Fig.~\ref{fig:sigmae}), which is the central result of this paper.
-  \item \textbf{LoS resilience.} The $\kappa$-factor sweep
-  (Fig.~\ref{fig:kappa}) confirms that DT-BC degrades gracefully
-  from strong-LoS to Rayleigh fading, whereas the analytical
-  formula collapses at low $\kappa$ where estimation noise dominates.
-  Training efficiency is $22\!\times$ faster than DDPG
-  ($3.8\,\text{min}$ vs.\ $84.7\,\text{min}$) with guaranteed
-  URLLC safety and convergence (Table~\ref{tab:training}).
-\end{enumerate}
-Together these findings establish DT-BC as a practical and robust
-candidate for URLLC resource allocation in active STAR-RIS
-deployments across a wide range of channel conditions.
+Across the eight simulation sweeps reported above, the results
+consistently confirm four key observations. First, the proposed
+DT-BC policy meets the $5\,\text{ms}$ URLLC target with $100\%$
+satisfaction and a mean E2E latency of $1.755\,\text{ms}$ at the
+default operating point, a regime that no non-coherent baseline
+approaches; DDPG eventually achieves comparable latency
+($1.73\,\text{ms}$) but only at a $22\!\times$ training-time penalty
+and with $4{,}000$ URLLC-violating exploration steps. Second, the
+$MN^2$ coherent-beamforming scaling predicted by
+Proposition~\ref{prop:opt} is confirmed empirically in both the
+$N$-sweep (Fig.~\ref{fig:N}) and the $M$-sweep (Fig.~\ref{fig:M}),
+validating the theoretical framework of Section~\ref{sec:problem}.
+Third, the implicit-denoising property of the dual-view digital twin
+confers a $13.7\!\times$ robustness advantage at $\sigma_e\!=\!0.15$
+($25.187\,\text{ms}$ vs.\ $1.837\,\text{ms}$, Fig.~\ref{fig:sigmae}),
+which represents the central contribution of this paper and
+demonstrates that a supervised imitator can strictly outperform its
+own oracle teacher under imperfect CSI. Fourth, the $\kappa$-factor
+sweep (Fig.~\ref{fig:kappa}) confirms that DT-BC degrades gracefully
+from strong-LoS to Rayleigh fading, whereas the analytical formula
+collapses at low $\kappa$ once estimation noise dominates the LoS
+component. Together, these findings establish DT-BC as a practical
+and robust candidate for URLLC resource allocation in active
+STAR-RIS deployments across a wide range of channel and propagation
+conditions.
 
 % ══════════════════════════════════════════════════════════════════════════════
 \section{Conclusion and Future Directions}
@@ -1765,171 +1595,7 @@ is that the sample complexity is polynomial and the observed
 $10^{5}$-sample plateau is theoretically expected.
 
 % ══════════════════════════════════════════════════════════════════════════════
-\begin{thebibliography}{28}
-
-\bibitem{durisi2016toward}
-G.~Durisi, T.~Koch, and P.~Popovski, ``Toward massive, ultra-reliable,
-and low-latency wireless communication with short packets,''
-\emph{Proc. IEEE}, vol.~104, no.~9, pp.~1711--1726, Sep.~2016.
-
-\bibitem{popovski2018slicing}
-P.~Popovski, K.~F. Trillingsgaard, O.~Simeone, and G.~Durisi, ``5G
-wireless network slicing for eMBB, URLLC, and mMTC: A
-communication-theoretic view,'' \emph{IEEE Access}, vol.~6,
-pp.~55\,765--55\,779, 2018.
-
-\bibitem{she2021tutorial}
-C.~She, C.~Sun, Z.~Gu, Y.~Li, C.~Yang, H.~V. Poor, and B.~Vucetic,
-``A tutorial on ultra-reliable and low-latency communications in 6G:
-Integrating theoretical knowledge into deep learning,''
-\emph{Proc. IEEE}, vol.~109, no.~3, pp.~204--246, Mar.~2021.
-
-\bibitem{polyanskiy2010channel}
-Y.~Polyanskiy, H.~V. Poor, and S.~Verd\'u, ``Channel coding rate in
-the finite blocklength regime,'' \emph{IEEE Trans. Inf. Theory},
-vol.~56, no.~5, pp.~2307--2359, May~2010.
-
-\bibitem{mao2017survey}
-Y.~Mao, C.~You, J.~Zhang, K.~Huang, and K.~B. Letaief, ``A survey on
-mobile edge computing: The communication perspective,''
-\emph{IEEE Commun. Surveys Tuts.}, vol.~19, no.~4,
-pp.~2322--2358, 4th quart.~2017.
-
-\bibitem{basar2019wireless}
-E.~Basar, M.~Di~Renzo, J.~De~Rosny, M.~Debbah, M.-S. Alouini, and
-R.~Zhang, ``Wireless communications through reconfigurable
-intelligent surfaces,'' \emph{IEEE Access}, vol.~7,
-pp.~116\,753--116\,773, 2019.
-
-\bibitem{direnzo2020smart}
-M.~Di~Renzo \emph{et al.}, ``Smart radio environments empowered by
-reconfigurable intelligent surfaces: How it works, state of research,
-and the road ahead,'' \emph{IEEE J. Sel. Areas Commun.}, vol.~38,
-no.~11, pp.~2450--2525, Nov.~2020.
-
-\bibitem{wu2019irs}
-Q.~Wu and R.~Zhang, ``Intelligent reflecting surface enhanced wireless
-network via joint active and passive beamforming,''
-\emph{IEEE Trans. Wireless Commun.}, vol.~18, no.~11,
-pp.~5394--5409, Nov.~2019.
-
-\bibitem{wu2021tutorial}
-Q.~Wu, S.~Zhang, B.~Zheng, C.~You, and R.~Zhang, ``Intelligent
-reflecting surface-aided wireless communications: A tutorial,''
-\emph{IEEE Trans. Commun.}, vol.~69, no.~5, pp.~3313--3351, May~2021.
-
-\bibitem{pan2021reconfigurable}
-C.~Pan \emph{et al.}, ``Reconfigurable intelligent surfaces for 6G
-systems: Principles, applications, and research directions,''
-\emph{IEEE Commun. Mag.}, vol.~59, no.~6, pp.~14--20, Jun.~2021.
-
-\bibitem{liu2021star}
-Y.~Liu, X.~Mu, J.~Xu, R.~Schober, Y.~Hao, H.~V. Poor, and L.~Hanzo,
-``STAR: Simultaneous transmission and reflection for 360$^\circ$
-coverage by intelligent surfaces,'' \emph{IEEE Wireless Commun.},
-vol.~28, no.~6, pp.~102--109, Dec.~2021.
-
-\bibitem{xu2021star}
-J.~Xu, Y.~Liu, X.~Mu, and O.~A. Dobre, ``STAR-RISs: Simultaneous
-transmitting and reflecting reconfigurable intelligent surfaces,''
-\emph{IEEE Commun. Lett.}, vol.~25, no.~9, pp.~3134--3138, Sep.~2021.
-
-\bibitem{mu2022star}
-X.~Mu, Y.~Liu, L.~Guo, J.~Lin, and R.~Schober, ``Simultaneously
-transmitting and reflecting (STAR) RIS aided wireless
-communications,'' \emph{IEEE Trans. Wireless Commun.}, vol.~21,
-no.~5, pp.~3083--3098, May~2022.
-
-\bibitem{long2021active}
-R.~Long, Y.-C. Liang, Y.~Pei, and E.~G. Larsson, ``Active
-reconfigurable intelligent surface-aided wireless communications,''
-\emph{IEEE Trans. Wireless Commun.}, vol.~20, no.~8,
-pp.~4962--4975, Aug.~2021.
-
-\bibitem{zhang2023activevspassive}
-Z.~Zhang, L.~Dai, X.~Chen, C.~Liu, F.~Yang, R.~Schober, and H.~V. Poor,
-``Active RIS vs. passive RIS: Which will prevail in 6G?,''
-\emph{IEEE Trans. Commun.}, vol.~71, no.~3, pp.~1707--1725, Mar.~2023.
-
-\bibitem{zhi2022activeris}
-K.~Zhi, C.~Pan, H.~Ren, K.~K. Chai, and M.~Elkashlan, ``Active RIS
-versus passive RIS: Which is superior with the same power budget?,''
-\emph{IEEE Commun. Lett.}, vol.~26, no.~5, pp.~1150--1154, May~2022.
-
-\bibitem{paul2024active}
-A.~Paul, K.~Singh, A.~Kumar, C.-P. Li, O.~A. Dobre, and T.~Q. Duong,
-``Exploiting active STAR-RIS to enable URLLC in digitally-twinned IoT
-networks,'' \emph{IEEE Trans. Commun.}, vol.~72, no.~12,
-pp.~7568--7585, Dec.~2024.
-
-\bibitem{ren2020joint}
-H.~Ren, C.~Pan, Y.~Deng, M.~Elkashlan, and A.~Nallanathan, ``Joint
-pilot and payload power allocation for massive-MIMO-enabled URLLC
-IIoT networks,'' \emph{IEEE J. Sel. Areas Commun.}, vol.~38, no.~5,
-pp.~816--830, May~2020.
-
-\bibitem{lo1999maximum}
-T.~K.~Y. Lo, ``Maximum ratio transmission,'' \emph{IEEE Trans.
-Commun.}, vol.~47, no.~10, pp.~1458--1461, Oct.~1999.
-
-\bibitem{hassibi2003how}
-B.~Hassibi and B.~M. Hochwald, ``How much training is needed in
-multiple-antenna wireless links?,'' \emph{IEEE Trans. Inf. Theory},
-vol.~49, no.~4, pp.~951--963, Apr.~2003.
-
-\bibitem{tse2005fundamentals}
-D.~Tse and P.~Viswanath, \emph{Fundamentals of Wireless
-Communication}.\quad Cambridge, U.K.: Cambridge Univ. Press, 2005.
-
-\bibitem{rappaport2014mmwave}
-T.~S. Rappaport \emph{et al.}, ``Millimeter wave mobile
-communications for 5G cellular: It will work!,'' \emph{IEEE Access},
-vol.~1, pp.~335--349, 2013.
-
-\bibitem{lillicrap2016continuous}
-T.~P. Lillicrap, J.~J. Hunt, A.~Pritzel, N.~Heess, T.~Erez, Y.~Tassa,
-D.~Silver, and D.~Wierstra, ``Continuous control with deep
-reinforcement learning,'' in \emph{Proc. Int. Conf. Learn.
-Representations (ICLR)}, 2016.
-
-\bibitem{pomerleau1991efficient}
-D.~A. Pomerleau, ``Efficient training of artificial neural networks
-for autonomous navigation,'' \emph{Neural Comput.}, vol.~3, no.~1,
-pp.~88--97, Mar.~1991.
-
-\bibitem{ross2011reduction}
-S.~Ross, G.~Gordon, and D.~Bagnell, ``A reduction of imitation
-learning and structured prediction to no-regret online learning,''
-in \emph{Proc. Int. Conf. Artif. Intell. Statist. (AISTATS)}, 2011,
-pp.~627--635.
-
-\bibitem{zappone2019model}
-A.~Zappone, M.~Di~Renzo, and M.~Debbah, ``Wireless networks design in
-the era of deep learning: Model-based, AI-based, or both?,''
-\emph{IEEE Trans. Commun.}, vol.~67, no.~10, pp.~7331--7376,
-Oct.~2019.
-
-\bibitem{huang2020reconfigurable}
-C.~Huang, S.~Hu, G.~C. Alexandropoulos, A.~Zappone, C.~Yuen,
-R.~Zhang, M.~Di~Renzo, and M.~Debbah, ``Holographic MIMO surfaces
-for 6G wireless networks: Opportunities, challenges, and trends,''
-\emph{IEEE Wireless Commun.}, vol.~27, no.~5, pp.~118--125, Oct.~2020.
-
-\bibitem{huber1964robust}
-P.~J. Huber, ``Robust estimation of a location parameter,''
-\emph{Ann. Math. Statist.}, vol.~35, no.~1, pp.~73--101, 1964.
-
-\bibitem{vincent2010stacked}
-P.~Vincent, H.~Larochelle, I.~Lajoie, Y.~Bengio, and P.-A. Manzagol,
-``Stacked denoising autoencoders: Learning useful representations in
-a deep network with a local denoising criterion,'' \emph{J. Mach.
-Learn. Res.}, vol.~11, pp.~3371--3408, Dec.~2010.
-
-\bibitem{shalev2014understanding}
-S.~Shalev-Shwartz and S.~Ben-David, \emph{Understanding Machine
-Learning: From Theory to Algorithms}.\quad Cambridge, U.K.:
-Cambridge Univ. Press, 2014.
-
-\end{thebibliography}
+\bibliographystyle{IEEEtran}
+\bibliography{references}
 
 \end{document}

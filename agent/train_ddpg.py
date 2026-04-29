@@ -177,8 +177,8 @@ def train_ddpg(total_timesteps=1_000_000, n_ris_elements=32,
     env = StarRisUrllcEnv(config=cfg, seed=seed)
 
     N          = n_ris_elements
-    obs_dim    = env.observation_space.shape[0]    # 2*N + 1 = 65
-    action_dim = env.action_space.shape[0]         # N + 1 + K
+    obs_dim    = env.observation_space.shape[0]    # 4*N + 1 = 129 for N=32 (cos/sin T+R phases + power)
+    action_dim = env.action_space.shape[0]         # 2*N + 1 + K = 69 for N=32, K=4
 
     if verbose:
         print(f"Behavioral Cloning Training  (DT-BC)")
