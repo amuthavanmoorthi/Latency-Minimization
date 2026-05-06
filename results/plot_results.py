@@ -47,7 +47,7 @@ def set_ieee_style():
 
 # ── Consistent line styles (IEEE-friendly, distinct in B&W) ──────────────────
 STYLES = {
-    'ddpg':   {'label': 'DDPG (Proposed)',     'color': '#1f77b4', 'marker': 'o', 'ls': '-'},
+    'ddpg':   {'label': 'DT-BC (Proposed)',      'color': '#1f77b4', 'marker': 'o', 'ls': '-'},
     'fixed':  {'label': 'Fixed Phase (Zero)',   'color': '#ff7f0e', 'marker': 's', 'ls': '--'},
     'no_ris': {'label': 'Random Phase',         'color': '#2ca02c', 'marker': '^', 'ls': '-.'},
     'random': {'label': 'Random Action',        'color': '#d62728', 'marker': 'x', 'ls': ':'},
