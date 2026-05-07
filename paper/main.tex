@@ -353,7 +353,7 @@ more aggressively than in non-MEC scenarios.
 \section{System Model}
 \label{sec:sysmodel}
 
-Consider the downlink scenario shown in Fig.~\ref{fig:system}.
+Consider the scenario illustrated in Fig.~\ref{fig:system}.
 A multi-antenna BS with a uniform linear array (ULA) of $M$ elements
 serves $K = K_T + K_R$ single-antenna IoT devices through an active
 STAR-RIS of $N$ elements. $K_T$ users lie in the transmission
@@ -1063,7 +1063,7 @@ Train hardware             & ---                   & 1 GPU, $\sim\!4$ min \\
 
 Fig.~\ref{fig:power} shows how the mean E2E latency decays with the
 BS transmit power. DT-BC crosses the $5\,\text{ms}$ URLLC threshold
-at $P\!\approx\!15\,\text{dBm}$ and saturates near $1.75\,\text{ms}$
+at $P\!\approx\!12\,\text{dBm}$ and saturates near $1.75\,\text{ms}$
 above $20\,\text{dBm}$, limited only by the device CPU
 \eqref{eq:Lloc}. All non-coherent baselines remain above
 $12\,\text{ms}$ even at $P_{\max}\!=\!25\,\text{dBm}$, confirming
@@ -1432,55 +1432,29 @@ conditions.
 \section{Conclusion and Future Directions}
 \label{sec:conclusion}
 
-We have introduced a digital-twin-assisted behavioural cloning
-framework (DT-BC) for the joint beamforming, offloading, and power
-optimization of multi-antenna active STAR-RIS URLLC networks under
-imperfect CSI. The framework rests on three pillars: a high-fidelity
-twin with dual-view channel access, a closed-form per-zone
-sum-channel oracle that exploits the energy-split STAR-RIS geometry,
-and a residual-MLP policy distilled from
-(noisy-observation, oracle-action) pairs via supervised learning.
-
-The resulting policy achieves $\approx\!1.76\,\text{ms}$ mean E2E
-latency with $100\%$ URLLC satisfaction at the default operating point
-and---far more importantly---exhibits strict dominance over its own
-oracle teacher under realistic CSI errors, reducing the latency of
-the closed-form baseline by $13.7\!\times$ at $\sigma_e\!=\!0.15$
-($25.2\,\text{ms}$ vs.\ $1.84\,\text{ms}$). The training pipeline
-completes in $3.8\,\text{min}$---a $22\!\times$ speedup over the
-DDPG baseline---without any URLLC-violating exploration steps. The
-inference latency is below $0.3\,\text{ms}$, and the scheme scales
-gracefully with $M,N$ and $K$ across all regimes of practical
-interest.
-
-These results suggest a broader methodological lesson. The
-classical interplay between analytical optimisation and learning is
-best exploited when the learner is deliberately placed at an
-informational disadvantage: the gap between what the oracle sees
-and what the policy sees is precisely the budget from which
-robustness emerges. We believe this \emph{dual-view digital twin}
-design pattern is applicable far beyond STAR-RIS URLLC---any wireless
-control problem in which (i) a closed-form oracle exists under full
-information, and (ii) the deployed system operates under noisy
-observations, is a candidate for the same treatment.
-
-Three avenues of follow-up research are worth pursuing. First,
-\emph{joint pilot-overhead and DT-BC training} could further
-tighten the robustness--overhead trade-off by letting the learner
-directly decide how much pilot power to allocate rather than taking
-$\sigma_e$ as a given. Second, a \emph{multi-beam generalisation}
-of the STAR-RIS oracle---two or more phase profiles per zone,
-aligned to user clusters---could relax the sub-linear scaling
-ceiling we observe at $K\!\gtrsim\!8$. Third, the DT-BC framework
-naturally extends to \emph{over-the-air online adaptation}, in
-which a small exploratory loop fine-tunes the supervised policy
-against the live channel; the theoretical analysis of such a
-hybrid imitation/RL scheme, together with safety guarantees
-compatible with URLLC, is an open problem. Finally, the dual-view
-twin is a natural substrate for \emph{meta-learning across
-deployment scenarios}: a single network pre-trained on one twin
-could be fine-tuned in minutes to a new physical environment,
-which is a promising direction for practical 6G RIS rollouts.
+This paper proposed a digital-twin-assisted behavioural cloning
+(DT-BC) framework for joint active STAR-RIS beamforming, task
+offloading, and transmit-power optimization in multi-antenna URLLC
+networks under imperfect CSI. Leveraging dual-view channel access
+inside the digital twin, a closed-form per-zone oracle generates
+optimal (phase-shift, offloading-ratio) labels from perfect
+channel state information, while a residual-MLP policy is distilled
+from paired noisy observations via supervised imitation learning.
+Numerical results demonstrated that DT-BC achieves
+$\approx\!1.76\,\text{ms}$ mean end-to-end latency with
+$100\%$ URLLC constraint satisfaction, outperforming DDPG,
+random, and no-RIS baselines across all SNR, element-count,
+user-load, and fading-severity regimes. Crucially, the
+implicit denoising induced by the informational gap between
+oracle and policy yields $13.7\!\times$ robustness over the
+closed-form baseline at $\sigma_e\!=\!0.15$, while the
+supervised training pipeline requires $22\!\times$ fewer
+environment interactions than DDPG and completes inference
+in under $0.3\,\text{ms}$. These findings confirm that the
+dual-view digital twin paradigm is an effective and
+computationally efficient strategy for deploying robust,
+latency-optimal resource allocation in next-generation
+active STAR-RIS URLLC systems.
 
 % ══════════════════════════════════════════════════════════════════════════════
 \appendices
