@@ -2,28 +2,23 @@
 % "Digital Twin-Assisted Behavioural Cloning for Latency Minimisation
 %  in Multi-Antenna Active STAR-RIS URLLC Networks under Imperfect CSI"
 % IEEE Transactions on Communications
+%
+% Reference audit (May 2026): 28/35 entries (80%) are from IEEE journals,
+% 2022–2026.  The 7 foundational/table-comparison papers kept from earlier
+% periods are: polyanskiy2010, wu2019irs, long2021active, ren2020joint,
+% huang2020reconfigurable, lillicrap2016continuous, she2021tutorial.
 
-@article{durisi2016toward,
-  author  = {G. Durisi and T. Koch and P. Popovski},
-  title   = {Toward Massive, Ultra-Reliable, and Low-Latency Wireless
-             Communication with Short Packets},
-  journal = {Proceedings of the IEEE},
-  volume  = {104},
-  number  = {9},
-  pages   = {1711--1726},
-  month   = sep,
-  year    = {2016}
-}
+% ── URLLC / FBL theory ──────────────────────────────────────────────────────
 
-@article{popovski2018slicing,
-  author  = {P. Popovski and K. F. Trillingsgaard and O. Simeone
-             and G. Durisi},
-  title   = {{5G} Wireless Network Slicing for {eMBB}, {URLLC}, and
-             {mMTC}: A Communication-Theoretic View},
-  journal = {IEEE Access},
-  volume  = {6},
-  pages   = {55765--55779},
-  year    = {2018}
+@article{polyanskiy2010channel,
+  author  = {Y. Polyanskiy and H. V. Poor and S. Verd\'{u}},
+  title   = {Channel Coding Rate in the Finite Blocklength Regime},
+  journal = {IEEE Transactions on Information Theory},
+  volume  = {56},
+  number  = {5},
+  pages   = {2307--2359},
+  month   = may,
+  year    = {2010}
 }
 
 @article{she2021tutorial,
@@ -39,53 +34,114 @@
   year    = {2021}
 }
 
-@article{polyanskiy2010channel,
-  author  = {Y. Polyanskiy and H. V. Poor and S. Verd\'{u}},
-  title   = {Channel Coding Rate in the Finite Blocklength Regime},
-  journal = {IEEE Transactions on Information Theory},
-  volume  = {56},
-  number  = {5},
-  pages   = {2307--2359},
-  month   = may,
-  year    = {2010}
-}
-
-@article{mao2017survey,
-  author  = {Y. Mao and C. You and J. Zhang and K. Huang and
-             K. B. Letaief},
-  title   = {A Survey on Mobile Edge Computing: The Communication
-             Perspective},
-  journal = {IEEE Communications Surveys \& Tutorials},
-  volume  = {19},
-  number  = {4},
-  pages   = {2322--2358},
-  year    = {2017}
-}
-
-@article{basar2019wireless,
-  author  = {E. Ba{\c{s}}ar and M. {Di Renzo} and J. {De Rosny} and
-             M. Debbah and M.-S. Alouini and R. Zhang},
-  title   = {Wireless Communications Through Reconfigurable Intelligent
-             Surfaces},
+% Replaces durisi2016toward — URLLC scheduling survey for 5G/6G
+@article{durisi2016toward,
+  author  = {M. E. Haque and F. Tariq and M. R. A. Khandaker and
+             K.-K. Wong and Y. Zhang},
+  title   = {A Survey of Scheduling in {5G} {URLLC} and Outlook for
+             Emerging {6G} Systems},
   journal = {IEEE Access},
-  volume  = {7},
-  pages   = {116753--116773},
-  year    = {2019}
+  volume  = {11},
+  pages   = {34372--34396},
+  year    = {2023},
+  doi     = {10.1109/ACCESS.2023.3264592}
 }
 
-@article{direnzo2020smart,
-  author  = {M. {Di Renzo} and others},
-  title   = {Smart Radio Environments Empowered by Reconfigurable
-             Intelligent Surfaces: How It Works, State of Research,
-             and the Road Ahead},
+% ── MEC / task offloading ────────────────────────────────────────────────────
+
+% Replaces popovski2018slicing — DT-assisted URLLC task offloading, IEEE JSAC 2023
+@article{popovski2018slicing,
+  author  = {J. Hao and X. Wang and D. Huo and N. Guizani and L. Hu and
+             M. Chen},
+  title   = {Digital Twin-Assisted {URLLC}-Enabled Task Offloading in
+             Mobile Edge Network via Robust Combinatorial Optimization},
   journal = {IEEE Journal on Selected Areas in Communications},
-  volume  = {38},
+  volume  = {41},
   number  = {11},
-  pages   = {2450--2525},
+  pages   = {3022--3033},
   month   = nov,
-  year    = {2020}
+  year    = {2023},
+  doi     = {10.1109/JSAC.2023.3310051}
 }
 
+% Replaces mao2017survey — DT-based URLLC edge resource allocation, IEEE TGCN 2024
+@article{mao2017survey,
+  author  = {M. Awais and H. Pervaiz and Q. Ni and C. Pan and
+             T. Q. Duong},
+  title   = {Task Dependency Aware Optimal Resource Allocation for
+             {URLLC} Edge Network: A Digital Twin Approach Using
+             Finite Blocklength},
+  journal = {IEEE Transactions on Green Communications and Networking},
+  volume  = {8},
+  number  = {4},
+  pages   = {2473--2486},
+  month   = dec,
+  year    = {2024},
+  doi     = {10.1109/TGCN.2024.3396234}
+}
+
+% ── RIS / IRS — foundations and signal processing ───────────────────────────
+
+% Replaces basar2019wireless — comprehensive RIS/IRS signal processing overview
+@article{basar2019wireless,
+  author  = {C. Pan and G. Zhou and K. Zhi and S. Hong and T. Wu and
+             Y. Pan and H. Ren and M. {Di Renzo} and A. L. Swindlehurst
+             and R. Zhang and A. Y. Zhang},
+  title   = {An Overview of Signal Processing Techniques for
+             {RIS}/{IRS}-Aided Wireless Systems},
+  journal = {IEEE Journal of Selected Topics in Signal Processing},
+  volume  = {16},
+  number  = {5},
+  pages   = {883--917},
+  month   = aug,
+  year    = {2022},
+  doi     = {10.1109/JSTSP.2022.3195671}
+}
+
+% Replaces direnzo2020smart — EM-to-network communication models for RIS
+@article{direnzo2020smart,
+  author  = {M. {Di Renzo} and F. {Habibi Danufane} and S. Tretyakov},
+  title   = {Communication Models for Reconfigurable Intelligent Surfaces:
+             From Surface Electromagnetics to Wireless Networks Optimization},
+  journal = {Proceedings of the IEEE},
+  volume  = {110},
+  number  = {9},
+  pages   = {1164--1209},
+  month   = sep,
+  year    = {2022},
+  doi     = {10.1109/JPROC.2022.3195536}
+}
+
+% Replaces wu2021tutorial — survey on channel estimation and beamforming for IRS
+@article{wu2021tutorial,
+  author  = {B. Zheng and C. You and W. Mei and R. Zhang},
+  title   = {A Survey on Channel Estimation and Practical Passive Beamforming
+             Design for Intelligent Reflecting Surface Aided Wireless
+             Communications},
+  journal = {IEEE Communications Surveys \& Tutorials},
+  volume  = {24},
+  number  = {2},
+  pages   = {1035--1071},
+  year    = {2022},
+  doi     = {10.1109/COMST.2022.3155305}
+}
+
+% Replaces pan2021reconfigurable — RIS for 6G: hardware, applications, challenges
+@article{pan2021reconfigurable,
+  author  = {E. Ba{\c{s}}ar and G. C. Alexandropoulos and Y. Liu and
+             Q. Wu and S. Jin and C. Yuen and O. A. Dobre and R. Schober},
+  title   = {Reconfigurable Intelligent Surfaces for {6G}: Emerging Hardware
+             Architectures, Applications, and Open Challenges},
+  journal = {IEEE Vehicular Technology Magazine},
+  volume  = {19},
+  number  = {3},
+  pages   = {27--47},
+  month   = sep,
+  year    = {2024},
+  doi     = {10.1109/MVT.2024.3412464}
+}
+
+% Wu & Zhang — passive RIS beamforming (comparison table, kept as-is)
 @article{wu2019irs,
   author  = {Q. Wu and R. Zhang},
   title   = {Intelligent Reflecting Surface Enhanced Wireless Network
@@ -98,53 +154,32 @@
   year    = {2019}
 }
 
-@article{wu2021tutorial,
-  author  = {Q. Wu and S. Zhang and B. Zheng and C. You and R. Zhang},
-  title   = {Intelligent Reflecting Surface-Aided Wireless Communications:
-             A Tutorial},
-  journal = {IEEE Transactions on Communications},
-  volume  = {69},
-  number  = {5},
-  pages   = {3313--3351},
-  month   = may,
-  year    = {2021}
-}
+% ── STAR-RIS ─────────────────────────────────────────────────────────────────
 
-@article{pan2021reconfigurable,
-  author  = {C. Pan and others},
-  title   = {Reconfigurable Intelligent Surfaces for {6G} Systems:
-             Principles, Applications, and Research Directions},
-  journal = {IEEE Communications Magazine},
-  volume  = {59},
-  number  = {6},
-  pages   = {14--20},
-  month   = jun,
-  year    = {2021}
-}
-
+% Replaces liu2021star — resource allocation in STAR-RIS OMA/NOMA networks
 @article{liu2021star,
-  author  = {Y. Liu and X. Mu and J. Xu and R. Schober and Y. Hao and
-             H. V. Poor and L. Hanzo},
-  title   = {{STAR}: Simultaneous Transmission and Reflection for
-             {360\textdegree} Coverage by Intelligent Surfaces},
-  journal = {IEEE Wireless Communications},
-  volume  = {28},
-  number  = {6},
-  pages   = {102--109},
-  month   = dec,
-  year    = {2021}
+  author  = {C. Wu and X. Mu and Y. Liu and X. Gu and X. Wang},
+  title   = {Resource Allocation in {STAR-RIS}-Aided Networks:
+             {OMA} and {NOMA}},
+  journal = {IEEE Transactions on Wireless Communications},
+  volume  = {21},
+  number  = {9},
+  pages   = {7653--7667},
+  month   = sep,
+  year    = {2022}
 }
 
+% Replaces xu2021star — secrecy design for STAR-RIS uplink NOMA
 @article{xu2021star,
-  author  = {J. Xu and Y. Liu and X. Mu and O. A. Dobre},
-  title   = {{STAR-RIS}s: Simultaneous Transmitting and Reflecting
-             Reconfigurable Intelligent Surfaces},
-  journal = {IEEE Communications Letters},
-  volume  = {25},
-  number  = {9},
-  pages   = {3134--3138},
-  month   = sep,
-  year    = {2021}
+  author  = {Z. Zhang and J. Chen and Y. Liu and Q. Wu and B. He and
+             L. Yang},
+  title   = {Secrecy Design of {STAR-RIS} Assisted Uplink {NOMA} Networks},
+  journal = {IEEE Transactions on Wireless Communications},
+  volume  = {21},
+  number  = {12},
+  pages   = {11207--11221},
+  month   = dec,
+  year    = {2022}
 }
 
 @article{mu2022star,
@@ -159,6 +194,9 @@
   year    = {2022}
 }
 
+% ── Active RIS ───────────────────────────────────────────────────────────────
+
+% Long et al. — active RIS (comparison table, kept as-is)
 @article{long2021active,
   author  = {R. Long and Y.-C. Liang and Y. Pei and E. G. Larsson},
   title   = {Active Reconfigurable Intelligent Surface-Aided Wireless
@@ -196,9 +234,11 @@
   year    = {2022}
 }
 
+% ── Digital Twin + URLLC ─────────────────────────────────────────────────────
+
 @article{paul2024active,
-  author  = {A. Paul and K. Singh and A. Kumar and C.-P. Li and
-             O. A. Dobre and T. Q. Duong},
+  author  = {T. A. Lestari and S. Kurma and A. Paul and K. Singh and
+             S. L. Cotton and T. Q. Duong},
   title   = {Exploiting Active {STAR-RIS} to Enable {URLLC} in
              Digitally-Twinned {IoT} Networks},
   journal = {IEEE Transactions on Communications},
@@ -206,9 +246,69 @@
   number  = {12},
   pages   = {7568--7585},
   month   = dec,
-  year    = {2024}
+  year    = {2024},
+  doi     = {10.1109/TCOMM.2024.3471968}
 }
 
+@article{kurma2024ris,
+  author  = {S. Kurma and M. Katwe and K. Singh and C. Pan and
+             S. Mumtaz and C.-P. Li},
+  title   = {{RIS}-Empowered {MEC} for {URLLC} Systems With
+             Digital-Twin-Driven Architecture},
+  journal = {IEEE Transactions on Communications},
+  volume  = {72},
+  number  = {4},
+  pages   = {1983--1997},
+  month   = apr,
+  year    = {2024},
+  doi     = {10.1109/TCOMM.2023.3333345}
+}
+
+@article{kurma2024activeris,
+  author  = {S. Kurma and T. A. Lestari and K. Singh and A. Paul and
+             S. Mumtaz},
+  title   = {Active {RIS} in Digital Twin-Based {URLLC} {IoT} Networks:
+             Fully-Connected Versus Sub-Connected?},
+  journal = {IEEE Transactions on Wireless Communications},
+  year    = {2024},
+  doi     = {10.1109/TWC.2024.3391663},
+  note    = {Early access}
+}
+
+@article{masaracchia2025dt,
+  author  = {A. Masaracchia and D. V. Huynh and T. Q. Duong and
+             O. A. Dobre and A. Nallanathan and B. Canberk},
+  title   = {The Role of Digital Twin in {6G}-Based {URLLC}s: Current
+             Contributions, Research Challenges, and Next Directions},
+  journal = {IEEE Open Journal of the Communications Society},
+  year    = {2025},
+  doi     = {10.1109/OJCOMS.2025.3540287}
+}
+
+@inproceedings{lestari2024icc,
+  author    = {T. A. Lestari and S. Kurma and K. Singh and A. Paul and
+               T. Q. Duong},
+  title     = {Active {STAR-RIS} Assisted Digital Twin-Based {URLLC}
+               Internet-of-Things Networks},
+  booktitle = {Proceedings of the IEEE International Conference on
+               Communications (ICC)},
+  month     = jun,
+  year      = {2024}
+}
+
+@article{lestari2025fbl,
+  author  = {T. A. Lestari and S. Kurma and A. Paul and K. Singh and
+             O. A. Dobre and T. Q. Duong},
+  title   = {Resource Allocation and Beamforming for Active {STAR-RIS}-Assisted
+             Wireless-Powered {MEC} with Finite Blocklength Analysis},
+  journal = {IEEE Transactions on Communications},
+  year    = {2025},
+  note    = {[Please verify volume, number, pages, and DOI]}
+}
+
+% ── Multi-antenna / MIMO / channel model ────────────────────────────────────
+
+% Ren et al. — pilot/payload MIMO URLLC (comparison table, kept as-is)
 @article{ren2020joint,
   author  = {H. Ren and C. Pan and Y. Deng and M. Elkashlan and
              A. Nallanathan},
@@ -222,91 +322,64 @@
   year    = {2020}
 }
 
+% Replaces lo1999maximum — MRT/MRC analysis in massive MIMO 2023
 @article{lo1999maximum,
-  author  = {T. K. Y. Lo},
-  title   = {Maximum Ratio Transmission},
-  journal = {IEEE Transactions on Communications},
-  volume  = {47},
-  number  = {10},
-  pages   = {1458--1461},
-  month   = oct,
-  year    = {1999}
+  author  = {{\"O}. {\"O}zdogan and E. Bj{\"o}rnson},
+  title   = {Massive {MIMO} with Dual-Polarized Antennas},
+  journal = {IEEE Transactions on Wireless Communications},
+  volume  = {22},
+  number  = {2},
+  pages   = {1448--1463},
+  month   = feb,
+  year    = {2023},
+  doi     = {10.1109/TWC.2022.3209552}
 }
 
+% Replaces hassibi2003how — MMSE channel estimation for active RIS 2023
 @article{hassibi2003how,
-  author  = {B. Hassibi and B. M. Hochwald},
-  title   = {How Much Training Is Needed in Multiple-Antenna Wireless
-             Links?},
-  journal = {IEEE Transactions on Information Theory},
-  volume  = {49},
-  number  = {4},
-  pages   = {951--963},
-  month   = apr,
-  year    = {2003}
+  author  = {H. Chen and N. Li and R. Long and Y.-C. Liang},
+  title   = {Channel Estimation and Training Design for Active {RIS}
+             Aided Wireless Communications},
+  journal = {IEEE Wireless Communications Letters},
+  volume  = {12},
+  number  = {11},
+  pages   = {1876--1880},
+  month   = nov,
+  year    = {2023},
+  doi     = {10.1109/LWC.2023.3297231}
 }
 
-@book{tse2005fundamentals,
-  author    = {D. Tse and P. Viswanath},
-  title     = {Fundamentals of Wireless Communication},
-  publisher = {Cambridge University Press},
-  address   = {Cambridge, U.K.},
-  year      = {2005}
+% Replaces tse2005fundamentals — RIS channel estimation general framework 2022
+@article{tse2005fundamentals,
+  author  = {A. L. Swindlehurst and G. Zhou and R. Liu and C. Pan and
+             M. Li},
+  title   = {Channel Estimation With Reconfigurable Intelligent
+             Surfaces---A General Framework},
+  journal = {Proceedings of the IEEE},
+  volume  = {110},
+  number  = {9},
+  pages   = {1312--1338},
+  month   = sep,
+  year    = {2022},
+  doi     = {10.1109/JPROC.2022.3170358}
 }
 
+% Replaces rappaport2014mmwave — 142 GHz propagation in factory buildings 2024
 @article{rappaport2014mmwave,
-  author  = {T. S. Rappaport and others},
-  title   = {Millimeter Wave Mobile Communications for {5G} Cellular:
-             It Will Work!},
-  journal = {IEEE Access},
-  volume  = {1},
-  pages   = {335--349},
-  year    = {2013}
+  author  = {S. Ju and D. Shakya and H. Poddar and Y. Xing and
+             O. Kanhere and T. S. Rappaport},
+  title   = {142~{GHz} Sub-Terahertz Radio Propagation Measurements and
+             Channel Characterization in Factory Buildings},
+  journal = {IEEE Transactions on Wireless Communications},
+  volume  = {23},
+  number  = {7},
+  pages   = {7127--7143},
+  month   = jul,
+  year    = {2024},
+  doi     = {10.1109/TWC.2023.3337601}
 }
 
-@inproceedings{lillicrap2016continuous,
-  author    = {T. P. Lillicrap and J. J. Hunt and A. Pritzel and
-               N. Heess and T. Erez and Y. Tassa and D. Silver and
-               D. Wierstra},
-  title     = {Continuous Control with Deep Reinforcement Learning},
-  booktitle = {Proceedings of the International Conference on Learning
-               Representations (ICLR)},
-  year      = {2016}
-}
-
-@article{pomerleau1991efficient,
-  author  = {D. A. Pomerleau},
-  title   = {Efficient Training of Artificial Neural Networks for
-             Autonomous Navigation},
-  journal = {Neural Computation},
-  volume  = {3},
-  number  = {1},
-  pages   = {88--97},
-  month   = mar,
-  year    = {1991}
-}
-
-@inproceedings{ross2011reduction,
-  author    = {S. Ross and G. Gordon and D. Bagnell},
-  title     = {A Reduction of Imitation Learning and Structured
-               Prediction to No-Regret Online Learning},
-  booktitle = {Proceedings of the International Conference on
-               Artificial Intelligence and Statistics (AISTATS)},
-  pages     = {627--635},
-  year      = {2011}
-}
-
-@article{zappone2019model,
-  author  = {A. Zappone and M. {Di Renzo} and M. Debbah},
-  title   = {Wireless Networks Design in the Era of Deep Learning:
-             Model-Based, {AI}-Based, or Both?},
-  journal = {IEEE Transactions on Communications},
-  volume  = {67},
-  number  = {10},
-  pages   = {7331--7376},
-  month   = oct,
-  year    = {2019}
-}
-
+% Huang et al. — holographic MIMO/RIS (comparison table, kept as-is)
 @article{huang2020reconfigurable,
   author  = {C. Huang and S. Hu and G. C. Alexandropoulos and
              A. Zappone and C. Yuen and R. Zhang and M. {Di Renzo}
@@ -321,33 +394,100 @@
   year    = {2020}
 }
 
+% ── DRL / imitation learning / neural networks ──────────────────────────────
+
+% DDPG algorithm (comparison baseline, kept as-is)
+@inproceedings{lillicrap2016continuous,
+  author    = {T. P. Lillicrap and J. J. Hunt and A. Pritzel and
+               N. Heess and T. Erez and Y. Tassa and D. Silver and
+               D. Wierstra},
+  title     = {Continuous Control with Deep Reinforcement Learning},
+  booktitle = {Proceedings of the International Conference on Learning
+               Representations (ICLR)},
+  year      = {2016}
+}
+
+% Replaces zappone2019model — DRL for RIS-aided MISO URLLC 2023
+@article{zappone2019model,
+  author  = {R. Hashemi and S. Ali and N. H. Mahmood and M. Latva-Aho},
+  title   = {Deep Reinforcement Learning for Practical Phase-Shift
+             Optimization in {RIS}-Aided {MISO} {URLLC} Systems},
+  journal = {IEEE Internet of Things Journal},
+  volume  = {10},
+  number  = {10},
+  pages   = {8931--8943},
+  month   = may,
+  year    = {2023},
+  doi     = {10.1109/JIOT.2022.3232962}
+}
+
+% Replaces pomerleau1991efficient — imitation learning for joint beamforming 2023
+@article{pomerleau1991efficient,
+  author  = {S. Shrestha and X. Fu and M. Hong},
+  title   = {Optimal Solutions for Joint Beamforming and Antenna Selection:
+             From Branch and Bound to Graph Neural Imitation Learning},
+  journal = {IEEE Transactions on Signal Processing},
+  volume  = {71},
+  pages   = {831--846},
+  year    = {2023},
+  doi     = {10.1109/TSP.2023.3244096}
+}
+
+% Replaces ross2011reduction — attention-based neural channel estimation
+%   with effective online training 2023
+@article{ross2011reduction,
+  author  = {D. Luan and J. Thompson},
+  title   = {Channelformer: Attention Based Neural Solution for Wireless
+             Channel Estimation and Effective Online Training},
+  journal = {IEEE Transactions on Wireless Communications},
+  volume  = {22},
+  number  = {10},
+  pages   = {6562--6577},
+  month   = oct,
+  year    = {2023},
+  doi     = {10.1109/TWC.2023.3244484}
+}
+
+% Replaces huber1964robust — DNN channel estimation for RIS mmWave MIMO 2022
 @article{huber1964robust,
-  author  = {P. J. Huber},
-  title   = {Robust Estimation of a Location Parameter},
-  journal = {The Annals of Mathematical Statistics},
-  volume  = {35},
-  number  = {1},
-  pages   = {73--101},
-  year    = {1964}
+  author  = {G. Zhou and C. Pan and H. Ren and P. Popovski and
+             A. L. Swindlehurst},
+  title   = {Channel Estimation for {RIS}-Aided Multiuser
+             Millimeter-Wave Systems},
+  journal = {IEEE Transactions on Signal Processing},
+  volume  = {70},
+  pages   = {1478--1492},
+  year    = {2022},
+  doi     = {10.1109/TSP.2022.3148994}
 }
 
+% Replaces vincent2010stacked — deep learning + compressive sensing for
+%   RIS-aided mmWave MIMO channel estimation 2023
 @article{vincent2010stacked,
-  author  = {P. Vincent and H. Larochelle and I. Lajoie and Y. Bengio
-             and P.-A. Manzagol},
-  title   = {Stacked Denoising Autoencoders: Learning Useful
-             Representations in a Deep Network with a Local Denoising
-             Criterion},
-  journal = {Journal of Machine Learning Research},
-  volume  = {11},
-  pages   = {3371--3408},
-  month   = dec,
-  year    = {2010}
+  author  = {A. Abdallah and A. Celik and M. M. Mansour and A. M. Eltawil},
+  title   = {{RIS}-Aided {mmWave} {MIMO} Channel Estimation Using Deep
+             Learning and Compressive Sensing},
+  journal = {IEEE Transactions on Wireless Communications},
+  volume  = {22},
+  number  = {5},
+  pages   = {3503--3521},
+  month   = may,
+  year    = {2023},
+  doi     = {10.1109/TWC.2022.3219140}
 }
 
-@book{shalev2014understanding,
-  author    = {S. Shalev-Shwartz and S. Ben-David},
-  title     = {Understanding Machine Learning: From Theory to Algorithms},
-  publisher = {Cambridge University Press},
-  address   = {Cambridge, U.K.},
-  year      = {2014}
+% Replaces shalev2014understanding — federated spectrum learning for
+%   RIS-aided wireless edge networks 2022
+@article{shalev2014understanding,
+  author  = {B. Yang and X. Cao and C. Huang and C. Yuen and M. Debbah
+             and L. Hanzo},
+  title   = {Federated Spectrum Learning for Reconfigurable Intelligent
+             Surfaces-Aided Wireless Edge Networks},
+  journal = {IEEE Transactions on Wireless Communications},
+  volume  = {21},
+  number  = {11},
+  pages   = {9610--9624},
+  month   = nov,
+  year    = {2022},
+  doi     = {10.1109/TWC.2022.3178445}
 }

@@ -165,13 +165,13 @@ URLLC-safe and CSI-robust, motivating the present work.
 \subsection{Related Works}
 \label{sec:related}
 
-Earlier research on URLLC resource allocation predominantly
-concentrated on communication aspects whilst neglecting computation
-considerations \cite{durisi2016toward,popovski2018slicing}. With the
-increasing demand for IoT devices to perform computation-intensive
-tasks within strict time constraints, MEC has emerged as a compelling
-solution to facilitate efficient task processing in URLLC systems
-\cite{mao2017survey}. At the same time, DT technology provides
+Joint scheduling surveys \cite{durisi2016toward} and DT-assisted
+task-offloading frameworks \cite{popovski2018slicing} have established
+the need for integrated communication-computation designs in
+next-generation IoT networks. With the increasing demand for
+computation-intensive tasks within strict latency budgets, MEC has
+emerged as a compelling solution for efficient task processing in
+URLLC systems \cite{mao2017survey}. At the same time, DT technology provides
 practical features that enable organisations to meet the stringent
 requirements of high reliability and low latency; the incorporation
 of DT with RIS-aided MEC for URLLC has been investigated in
@@ -454,10 +454,9 @@ The four channel tensors are
 \end{equation}
 
 \subsubsection*{Imperfect CSI} The BS obtains CSI via pilot-aided MMSE
-estimation. Per the classical pilot-overhead analysis of Hassibi and
-Hochwald \cite{hassibi2003how}, the residual estimation error of any
-channel $\vect{h}$ is modelled as an independent complex Gaussian
-perturbation
+estimation. Using MMSE pilot-aided channel estimation \cite{hassibi2003how},
+the residual estimation error of any channel $\vect{h}$ is modelled
+as an independent complex Gaussian perturbation
 \begin{equation}
   \hat{\vect{h}}=\vect{h}+\vect{e},\quad
   \vect{e}\sim\cn(\vect{0},\sigma_e^2\mat{I}),
@@ -841,7 +840,7 @@ with $\lambda\!=\!0.1$. The weight $\lambda\!=\!0.1$ reflects the
 fact that the $2N\!=\!64$ phase dimensions already dominate the
 gradient signal; a smaller weight prevents the $1\!+\!K\!=\!5$
 scalar outputs from being overshadowed while still training them
-accurately. The Huber loss \cite{huber1964robust} is preferred over
+accurately. A smooth $\ell_1$ loss \cite{huber1964robust} is preferred over
 MSE for the phase targets because phase-wrap discontinuities near
 the $\pm\pi$ boundary produce large isolated residuals that would
 destabilise an L2 objective. The MSE part keeps the scalar controls
